@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="toolbar">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="muted">{{ session.user.username }} · {{ session.user.role_names | join(", ") }}</p>
+  </div>
+  <form method="post" action="/servers/refresh">
+    <button type="submit">Refresh Discovery</button>
+  </form>
+</section>
+
+<section class="metrics">
+  <div><strong>{{ connected_servers | length }}</strong><span>Connected Servers</span></div>
+  <div><strong>{{ tools | length }}</strong><span>Tools</span></div>
+  <div><strong>{{ resources | length }}</strong><span>Resources</span></div>
+  <div><strong>{{ prompts | length }}</strong><span>Prompts</span></div>
+</section>
+
+<section class="panel">
+  <h2>Servers</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Roles</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for server in servers %}
+      <tr>
+        <td>{{ server.name }}</td>
+        <td>{{ server.allowed_roles | join(", ") }}</td>
+        <td>{% if server.name in connected_servers %}Connected{% else %}Offline{% endif %}</td>
+        <td>
+          {% if server.name not in connected_servers %}
+          <form method="post" action="/servers/connect">
+            <input type="hidden" name="server_name" value="{{ server.name }}">
+            <button type="submit">Connect</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+

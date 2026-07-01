@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="toolbar">
+  <div>
+    <h1>Tool Result</h1>
+    <p class="muted">Execution response from the MCP server.</p>
+  </div>
+  <a class="button-link" href="/tools">Back To Tools</a>
+</section>
+<section class="panel">
+  <pre>{{ result }}</pre>
+</section>
+{% endblock %}
+

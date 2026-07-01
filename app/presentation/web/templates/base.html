@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} - Enterprise MCP Host</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/dashboard">Enterprise MCP Host</a>
+    {% if session %}
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/tools">Tools</a>
+      <a href="/resources">Resources</a>
+      <a href="/prompts">Prompts</a>
+      <a href="/audit-logs">Audit Logs</a>
+    </nav>
+    <form method="post" action="/logout">
+      <button type="submit" class="ghost">Logout</button>
+    </form>
+    {% endif %}
+  </header>
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
+

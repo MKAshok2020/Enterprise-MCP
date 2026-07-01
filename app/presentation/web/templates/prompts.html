@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="toolbar"><h1>Prompts</h1></section>
+<section class="panel">
+  <table>
+    <thead><tr><th>Server</th><th>Name</th><th>Description</th></tr></thead>
+    <tbody>
+      {% for item in prompts %}
+      <tr><td>{{ item.server_name }}</td><td>{{ item.name }}</td><td>{{ item.description }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+

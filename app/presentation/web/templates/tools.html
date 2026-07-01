@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="toolbar">
+  <div>
+    <h1>Tools</h1>
+    <p class="muted">Execute authorized MCP tools.</p>
+  </div>
+</section>
+<section class="panel">
+  <table>
+    <thead><tr><th>Tool</th><th>Description</th><th>Execute</th></tr></thead>
+    <tbody>
+      {% for tool in tools %}
+      <tr>
+        <td>{{ tool.qualified_name }}</td>
+        <td>{{ tool.description }}</td>
+        <td>
+          <form method="post" action="/tools/execute" class="inline-form">
+            <input type="hidden" name="qualified_name" value="{{ tool.qualified_name }}">
+            <textarea name="arguments_json" rows="2">{}</textarea>
+            <button type="submit">Run</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+
