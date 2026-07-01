@@ -85,6 +85,14 @@ textarea {
   width: 100%;
 }
 
+code {
+  background: #eef4f8;
+  border-radius: 4px;
+  color: #243445;
+  display: inline-block;
+  padding: 3px 6px;
+}
+
 button,
 .button-link {
   background: var(--accent);
@@ -131,6 +139,31 @@ button:disabled {
   color: var(--danger);
   margin: 16px 0;
   padding: 12px;
+}
+
+.badge,
+.status {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+}
+
+.badge {
+  background: #edf7f6;
+  color: var(--accent-dark);
+  text-transform: uppercase;
+}
+
+.status-ok {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.status-off {
+  background: #f2f4f7;
+  color: var(--muted);
 }
 
 .metrics {
@@ -189,6 +222,49 @@ pre {
   white-space: pre-wrap;
 }
 
+.chat-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.chat-form {
+  display: grid;
+  gap: 14px;
+}
+
+.chat-result {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  padding-top: 18px;
+}
+
+.meta-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.meta-grid div {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.meta-grid dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.meta-grid dd {
+  margin: 0;
+}
+
 .sso-grid {
   display: grid;
   gap: 10px;
@@ -212,4 +288,3 @@ pre {
     flex-wrap: wrap;
   }
 }
-

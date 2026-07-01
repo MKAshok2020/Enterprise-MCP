@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from time import perf_counter
 from typing import Any
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -130,7 +131,10 @@ async def dashboard(request: Request) -> HTMLResponse:
             "title": "Dashboard",
             "session": session,
             "connected_servers": host.server_manager.connected_names(),
-            "servers": host.server_manager.list_servers(),
+            "servers": _server_views(
+                host.server_manager.list_servers(),
+                host.server_manager.connected_names(),
+            ),
             "tools": host.tool_manager.list_tools(),
             "resources": host.resource_manager.list_resources(),
             "prompts": host.prompt_manager.list_prompts(),
@@ -176,6 +180,61 @@ async def tools(request: Request) -> HTMLResponse:
         request,
         "tools.html",
         {"title": "Tools", "session": session, "tools": host.tool_manager.list_tools()},
+    )
+
+
+@router.get("/chat", response_class=HTMLResponse)
+async def chat(request: Request) -> HTMLResponse:
+    """Render tool-aware chat page."""
+    host = get_host(request)
+    session = current_session(request, host)
+    return templates.TemplateResponse(
+        request,
+        "chat.html",
+        {
+            "title": "LLM Chat",
+            "session": session,
+            "message": "",
+            "chat": None,
+            "connected_servers": host.server_manager.connected_names(),
+        },
+    )
+
+
+@router.post("/chat", response_class=HTMLResponse)
+async def chat_message(
+    request: Request,
+    message: str = Form(...),
+) -> HTMLResponse:
+    """Answer a chat message using approved MCP tools."""
+    host = get_host(request)
+    session = current_session(request, host)
+    try:
+        with host.database.session() as db_session:
+            chat_response = await host.chat_manager.respond(
+                message,
+                session.user,
+                host.server_manager.connections,
+                AccessRepository(db_session),
+            )
+    except EnterpriseMCPError as exc:
+        host.audit(AuditEventType.ERROR.value, session.user.username, False, str(exc))
+        chat_response = {
+            "answer": str(exc),
+            "tool": None,
+            "arguments": None,
+            "result": None,
+        }
+    return templates.TemplateResponse(
+        request,
+        "chat.html",
+        {
+            "title": "LLM Chat",
+            "session": session,
+            "message": message,
+            "chat": chat_response,
+            "connected_servers": host.server_manager.connected_names(),
+        },
     )
 
 
@@ -262,3 +321,42 @@ async def _execute_tool(
             host.server_manager.connections,
             AccessRepository(db_session),
         )
+
+
+def _server_views(
+    servers: list[Any],
+    connected_servers: list[str],
+) -> list[dict[str, Any]]:
+    connected = set(connected_servers)
+    return [
+        {
+            "name": server.name,
+            "allowed_roles": server.allowed_roles,
+            "status": "Connected" if server.name in connected else "Offline",
+            "is_connected": server.name in connected,
+            "protocol": server.service.protocol.value if server.service else "stdio",
+            "description": server.service.description if server.service else "",
+            "endpoints": _server_endpoints(server),
+            "tools": list(server.service.operations) if server.service else [],
+        }
+        for server in servers
+    ]
+
+
+def _server_endpoints(server: Any) -> list[str]:
+    if server.service is None:
+        command = " ".join([server.command, *server.args]).strip()
+        return [command]
+
+    base_url = server.service.connection.base_url.rstrip("/")
+    endpoints = []
+    for operation in server.service.operations.values():
+        url = f"{base_url}{operation.path or ''}"
+        query = {
+            key: value
+            for key, value in operation.query.items()
+        }
+        if query:
+            url = f"{url}?{urlencode(query)}"
+        endpoints.append(url)
+    return endpoints

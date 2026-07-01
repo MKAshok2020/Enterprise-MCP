@@ -53,11 +53,12 @@ class ServerDefinition:
     """Configured MCP server connection definition."""
 
     name: str
-    command: str
-    args: tuple[str, ...]
-    env: dict[str, str]
     allowed_roles: tuple[str, ...]
-    timeout_seconds: int
+    command: str = ""
+    args: tuple[str, ...] = field(default_factory=tuple)
+    env: dict[str, str] = field(default_factory=dict)
+    timeout_seconds: int = 30
+    service: Any | None = None
 
 
 @dataclass(frozen=True)

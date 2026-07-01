@@ -21,6 +21,7 @@ from app.application.prompt_manager import PromptManager
 from app.application.resource_manager import ResourceManager
 from app.application.server_manager import ServerManager
 from app.application.session_manager import SessionManager
+from app.application.chat_manager import ChatManager
 from app.application.tool_manager import ToolManager
 
 
@@ -42,6 +43,7 @@ class Host:
         self.servers, self.tool_rules, self.identity_providers = self.loader.load()
         self.server_manager = ServerManager(self.servers, self.authorization)
         self.tool_manager = ToolManager(self.authorization)
+        self.chat_manager = ChatManager(self.tool_manager)
         self.resource_manager = ResourceManager()
         self.prompt_manager = PromptManager()
 

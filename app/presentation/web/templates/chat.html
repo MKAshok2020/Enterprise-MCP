@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="toolbar">
+  <div>
+    <h1>LLM Chat</h1>
+    <p class="muted">Ask a weather, climate, rain, wind, humidity, or umbrella question.</p>
+  </div>
+</section>
+
+<section class="panel chat-panel">
+  <form method="post" action="/chat" class="chat-form">
+    <label>
+      Message
+      <textarea name="message" rows="4" >{{ message }}</textarea>
+    </label>
+    <button type="submit">Send</button>
+  </form>
+
+  {% if chat %}
+  <div class="chat-result">
+    <h2>Assistant</h2>
+    <p>{{ chat.answer }}</p>
+    {% if chat.tool %}
+    <dl class="meta-grid">
+      <div>
+        <dt>Tool</dt>
+        <dd>{{ chat.tool }}</dd>
+      </div>
+      <div>
+        <dt>Arguments</dt>
+        <dd><pre>{{ chat.arguments }}</pre></dd>
+      </div>
+    </dl>
+    {% endif %}
+    {% if chat.result %}
+    <details>
+      <summary>Raw Tool Result</summary>
+      <pre>{{ chat.result }}</pre>
+    </details>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if "Local Weather REST" not in connected_servers %}
+  <div class="alert">
+    Connect Local Weather REST from the dashboard before asking weather questions.
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

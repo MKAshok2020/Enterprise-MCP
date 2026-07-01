@@ -1,6 +1,8 @@
 from typing import Any, Dict, List, Optional
-from .enums import AuthenticationType, HttpMethod,Protocol
+
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.domain.enums import AuthenticationType, HttpMethod, Protocol
 
 # ---------------------------------------------------------
 # Base Model
@@ -21,10 +23,6 @@ class Connection(BaseModel):
 
     base_url: Optional[str] = Field(default=None, alias="baseUrl")
     verify_ssl: bool = Field(default=True, alias="verifySSL")
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    base_url: str = Field(alias="baseUrl")
     timeout: int = 30 
     #Generic
     host: Optional[str] = None

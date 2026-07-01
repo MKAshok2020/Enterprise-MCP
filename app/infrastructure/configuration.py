@@ -10,6 +10,7 @@ from app.config.settings import Settings
 from app.domain.enums import PermissionCode
 from app.domain.exceptions import ConfigurationError
 from app.domain.models import ServerDefinition
+from app.domain.services_config import Service
 from app.persistence.repositories import AccessRepository, RoleRepository, UserRepository
 from app.security.password_service import PasswordService
 
@@ -39,16 +40,38 @@ class ConfigurationLoader:
             return json.load(handle)
 
     def _server_from_dict(self, item: dict[str, Any]) -> ServerDefinition:
+        if "name" not in item and len(item) == 1:
+            item = next(iter(item.values()))
+
+        if "protocol" in item:
+            return self._service_from_dict(item)
+
         required = {"name", "command", "args", "env", "allowed_roles"}
         if missing := required.difference(item):
             raise ConfigurationError(f"Server config missing: {sorted(missing)}")
         return ServerDefinition(
             name=str(item["name"]),
+            allowed_roles=tuple(str(role) for role in item["allowed_roles"]),
             command=str(item["command"]),
             args=tuple(str(arg) for arg in item["args"]),
             env={str(key): str(value) for key, value in item["env"].items()},
-            allowed_roles=tuple(str(role) for role in item["allowed_roles"]),
             timeout_seconds=int(item.get("timeout_seconds", 30)),
+        )
+
+    def _service_from_dict(self, item: dict[str, Any]) -> ServerDefinition:
+        if not item.get("enabled", True):
+            raise ConfigurationError(f"Disabled service in active server list: {item.get('name')}")
+        if "allowed_roles" not in item:
+            raise ConfigurationError(f"Service config missing: ['allowed_roles']")
+        try:
+            service = Service.model_validate(item)
+        except Exception as exc:
+            raise ConfigurationError(f"Invalid service config: {exc}") from exc
+        return ServerDefinition(
+            name=service.name,
+            allowed_roles=tuple(str(role) for role in item["allowed_roles"]),
+            timeout_seconds=int(item.get("timeout_seconds", service.connection.timeout)),
+            service=service,
         )
 
 

@@ -68,7 +68,7 @@ Server access rules, tool permissions, and identity provider metadata are loaded
 }
 ```
 
-The host validates these rules before invoking the MCP SDK.
+The host validates these rules before invoking stdio MCP servers or service-backed adapters such as REST.
 
 ## Configuration
 
@@ -100,27 +100,11 @@ Use Python 3.12 or newer.
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-python -m app.presentation.main
 ```
-
-Run the web application:
-
-```powershell
-python run_web.py
-```
-
-Then open:
-
-```text
-http://127.0.0.1:8000
-```
-
-The web app includes login, dashboard, server connection, discovery refresh, tool execution, resources, prompts, and audit log views.
 
 Create the MySQL database before first startup:
 
 ```sql
-CREATE DATABASE enterprise_mcp_host CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE enterprise_mcp_host CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
@@ -137,6 +121,108 @@ The same setup SQL is also available at `app/config/mysql_setup.sql`. With your 
 Your JDBC server URL `jdbc:mysql://localhost:3306/` maps to the SQLAlchemy/PyMySQL URL above. The app adds the `enterprise_mcp_host` database name at the end.
 
 On first start, the application creates MySQL tables and seeds roles, permissions, users, identity providers, server access rules, and tool permissions.
+
+## Run The MCP Host
+
+The host is the application shell that authenticates users, connects configured MCP servers/services, discovers tools, and executes authorized calls.
+
+Run the web host:
+
+```powershell
+python run_web.py
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+Login with one of the seeded users:
+
+| Username | Password | Role |
+| --- | --- | --- |
+| `admin` | `Admin@123` | Administrator |
+| `operator` | `Operator@123` | Operator |
+| `viewer` | `Viewer@123` | Viewer |
+
+The web app includes login, dashboard, server connection, discovery refresh, tool execution, resources, prompts, and audit log views.
+
+Run the Rich CLI host instead of the web host:
+
+```powershell
+python -m app.presentation.main
+```
+
+## Run The MCP Server
+
+This project supports two server styles:
+
+- Service-backed REST servers configured in `app/config/servers.json`.
+- Traditional stdio MCP servers launched through the official Python MCP SDK.
+
+The default working REST server is `Local Weather REST`. It points at `http://localhost:8009/weather` and expects the LLM or caller to supply a `location` query argument. For example, `location=London` calls `http://localhost:8009/weather?location=London`. Start your local weather API on port `8009` before connecting it from the host.
+
+The weather tool is described for model-driven selection. An LLM should call `Local Weather REST.get_weather` when the user asks about weather, climate, temperature, rain, wind, humidity, outdoor conditions, or questions like "Should I carry an umbrella today?" The LLM should extract the location from the user's request and pass it as `location`; if no location is available, it should ask a follow-up question before calling the tool.
+
+To use it from the host:
+
+1. Start the web or CLI host.
+2. Login as `admin` or `operator`.
+3. Connect `Local Weather REST`.
+4. Refresh discovery.
+5. Execute tool `Local Weather REST.get_weather` with a model-supplied or user-supplied location:
+
+```json
+{
+  "location": "London"
+}
+```
+
+For stdio MCP servers, add or keep entries like this in `app/config/servers.json`:
+
+```json
+{
+  "name": "Weather Server",
+  "command": "python",
+  "args": ["-m", "weather_mcp_server"],
+  "env": {},
+  "allowed_roles": ["Administrator", "Operator"],
+  "timeout_seconds": 30
+}
+```
+
+When the host connects this server, it starts the configured command over stdio and initializes an MCP SDK client session.
+
+## Run The MCP Client
+
+The host uses `app/infrastructure/mcp_client.py` as its MCP client adapter. You normally exercise it through the web or CLI host, but you can smoke test the REST-backed client directly:
+
+```powershell
+@'
+import asyncio
+from app.config.settings import get_settings
+from app.infrastructure.configuration import ConfigurationLoader
+from app.infrastructure.mcp_client import MCPServerConnection
+
+async def main():
+    servers, _, _ = ConfigurationLoader(get_settings()).load()
+    server = next(item for item in servers if item.name == "Local Weather REST")
+    connection = MCPServerConnection(server)
+    await connection.connect()
+    print([tool.qualified_name for tool in await connection.list_tools()])
+    print(await connection.call_tool("get_weather", {"location": "London"}))
+    await connection.close()
+
+asyncio.run(main())
+'@ | python -
+```
+
+Expected output includes:
+
+```text
+['Local Weather REST.get_weather']
+```
 
 ## Adding Servers
 
@@ -362,7 +448,7 @@ Edit `app/config/servers.json`:
 
 ```
 
-Restart the host so the configuration loader can seed access rules. The MCP adapter uses the official Python SDK over stdio.
+Restart the host so the configuration loader can seed access rules. REST, HTTP, and HTTPS services are handled by `RestAdapter`; stdio entries are handled by the official MCP Python SDK over stdio.
 
 ## Adding Users
 
@@ -412,4 +498,4 @@ Recommended production steps:
 
 ## Future LLM Integration
 
-The host intentionally does not call an LLM today. Future integration should add an application-layer `LLMOrchestrator` that receives discovered tools/resources/prompts from the existing managers, applies the same authorization checks, and only then exposes approved capabilities to the model context.
+The host exposes discovered tools with descriptions and JSON schemas that an LLM can use for tool selection and argument generation. A future application-layer `LLMOrchestrator` should receive discovered tools/resources/prompts from the existing managers, apply the same authorization checks, and only then expose approved capabilities to the model context.

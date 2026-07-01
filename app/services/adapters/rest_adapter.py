@@ -10,8 +10,8 @@ from .base.exceptions import (
     ServiceException,
     TimeoutException,
 )
-from .models.enums import AuthenticationType, HttpMethod
-from .models.services_config import Operation, Service 
+from app.domain.enums import AuthenticationType
+from app.domain.services_config import Operation, Service 
 
 
 class RestAdapter(BaseAdapter):
@@ -34,6 +34,15 @@ class RestAdapter(BaseAdapter):
 
         self.resilience = service.resilience
 
+    async def connect(self) -> None:
+        """Probe configured service connectivity when a sample payload exists."""
+
+        for operation_name, operation in self.service.operations.items():
+            sample_payload = operation.properties.get("samplePayload")
+            if isinstance(sample_payload, dict):
+                await self.invoke(operation_name, sample_payload)
+                return
+
     async def invoke(
         self,
         operation_name: str,
@@ -43,6 +52,8 @@ class RestAdapter(BaseAdapter):
         payload = payload or {}
 
         operation = self._get_operation(operation_name)
+
+        self._validate_payload(operation_name, operation, payload)
 
         method = operation.method.value
 
@@ -222,3 +233,25 @@ class RestAdapter(BaseAdapter):
                 )
 
         return headers
+
+    @staticmethod
+    def _validate_payload(
+        operation_name: str,
+        operation: Operation,
+        payload: dict,
+    ) -> None:
+
+        input_schema = operation.properties.get("inputSchema", {})
+        required = input_schema.get("required", [])
+
+        missing = [
+            field
+            for field in required
+            if payload.get(field) in (None, "")
+        ]
+
+        if missing:
+            raise AdapterException(
+                f"Operation '{operation_name}' missing required argument(s): "
+                f"{', '.join(missing)}"
+            )

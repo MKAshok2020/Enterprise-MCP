@@ -20,15 +20,29 @@
 <section class="panel">
   <h2>Servers</h2>
   <table>
-    <thead><tr><th>Name</th><th>Roles</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Protocol</th><th>Endpoint</th><th>Tools</th><th>Roles</th><th>Status</th><th></th></tr></thead>
     <tbody>
       {% for server in servers %}
       <tr>
-        <td>{{ server.name }}</td>
-        <td>{{ server.allowed_roles | join(", ") }}</td>
-        <td>{% if server.name in connected_servers %}Connected{% else %}Offline{% endif %}</td>
         <td>
-          {% if server.name not in connected_servers %}
+          <strong>{{ server.name }}</strong>
+          {% if server.description %}<div class="muted">{{ server.description }}</div>{% endif %}
+        </td>
+        <td><span class="badge">{{ server.protocol }}</span></td>
+        <td>
+          {% for endpoint in server.endpoints %}
+          <code>{{ endpoint }}</code>{% if not loop.last %}<br>{% endif %}
+          {% endfor %}
+        </td>
+        <td>{{ server.tools | join(", ") }}</td>
+        <td>{{ server.allowed_roles | join(", ") }}</td>
+        <td>
+          <span class="status {% if server.is_connected %}status-ok{% else %}status-off{% endif %}">
+            {{ server.status }}
+          </span>
+        </td>
+        <td>
+          {% if not server.is_connected %}
           <form method="post" action="/servers/connect">
             <input type="hidden" name="server_name" value="{{ server.name }}">
             <button type="submit">Connect</button>
@@ -41,4 +55,3 @@
   </table>
 </section>
 {% endblock %}
-

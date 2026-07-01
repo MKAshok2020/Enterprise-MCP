@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
-from ..models.services_config import Service
+
+from app.domain.services_config import Service
 
 
 class BaseAdapter(ABC):

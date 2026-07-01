@@ -3,28 +3,95 @@
 
 {
   "servers": [
-    
     {
-    "service-name": {
-      "name": "",
-      "description": "",
-      "protocol": "",
+      "name": "Local Weather REST",
+      "description": "Local weather API service for weather, climate, rain, and umbrella questions.",
+      "protocol": "rest",
       "enabled": true,
-
-      "connection": {},
-
-      "authentication": {},
-
-      "resilience": {},
-
-      "operations": {},
-      "env":{},
-      "timeout_seconds" : 5,
-      "allowed_roles" : ["Administrator", "Operator"]
-    }
-  } ,
-
-
+      "connection": {
+        "baseUrl": "http://localhost:8009",
+        "timeout": 30,
+        "verifySSL": true
+      },
+      "authentication": {
+        "type": "none"
+      },
+      "resilience": {
+        "retry": 1,
+        "retryDelay": 1
+      },
+      "operations": {
+        "get_weather": {
+          "method": "GET",
+          "path": "/weather",
+          "query": {
+            "location": "{location}"
+          },
+          "properties": {
+            "description": "Use this tool when the user asks about weather, climate, temperature, rain, wind, humidity, outdoor conditions, or whether they should carry an umbrella. The LLM must extract the location from the user's request and pass it as the location argument. If the user does not provide a location, ask a follow-up question before calling this tool.",
+            "samplePayload": {
+              "location": "London"
+            },
+            "inputSchema": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "City, town, address, or place name from the user's request, for example London, Chennai, or New York."
+                }
+              },
+              "required": ["location"]
+            }
+          }
+        }
+      },
+      "allowed_roles": ["Administrator", "Operator"],
+      "timeout_seconds": 30
+    },
+    {
+      "name": "JSONPlaceholder REST",
+      "description": "Sample JSON REST API service for verifying generic REST tool connectivity.",
+      "protocol": "rest",
+      "enabled": true,
+      "connection": {
+        "baseUrl": "https://jsonplaceholder.typicode.com",
+        "timeout": 30,
+        "verifySSL": true
+      },
+      "authentication": {
+        "type": "none"
+      },
+      "resilience": {
+        "retry": 1,
+        "retryDelay": 1
+      },
+      "operations": {
+        "get_post": {
+          "method": "GET",
+          "path": "/posts/{id}",
+          "properties": {
+            "description": "Fetch a sample JSONPlaceholder post by id. Use this tool for testing generic JSON REST connectivity.",
+            "samplePayload": {
+              "id": 1
+            },
+            "inputSchema": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "Post id to fetch."
+                }
+              },
+              "required": ["id"]
+            }
+          }
+        }
+      },
+      "allowed_roles": ["Administrator", "Operator"],
+      "timeout_seconds": 30
+    },
     {
       "name": "Weather Server",
       "command": "python",
@@ -44,6 +111,8 @@
   ]
   ,
   "tool_permissions": {
+    "Local Weather REST.get_weather": ["Administrator", "Operator"],
+    "JSONPlaceholder REST.get_post": ["Administrator", "Operator"],
     "Weather Server.get_forecast": ["Administrator", "Operator"],
     "Finance Server.quote": ["Administrator"],
     "calculator.add": ["Administrator", "Operator"],
