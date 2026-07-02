@@ -89,7 +89,12 @@ class ChatManager:
         from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
         from langchain_ollama import ChatOllama
         from langgraph.graph import END, StateGraph
-        docs = self.document_store.search(message)
+        document_warning = ""
+        try:
+            docs = self.document_store.search(message)
+        except Exception as exc:
+            docs = []
+            document_warning = f"Document context was unavailable for this turn: {exc}"
         tool_specs, alias_map = self._tool_schemas(user, access_repository)
         llm = ChatOllama(model=self.model_name, temperature=0.2)
         tool_llm = llm.bind_tools(tool_specs) if tool_specs else llm
@@ -145,7 +150,13 @@ class ChatManager:
         result = await app.ainvoke(
             {
                 "messages": [
-                    SystemMessage(content=self._system_prompt(docs, tool_specs)),
+                    SystemMessage(
+                        content=self._system_prompt(
+                            docs,
+                            tool_specs,
+                            document_warning,
+                        )
+                    ),
                     HumanMessage(content=message),
                 ]
             },
@@ -154,6 +165,23 @@ class ChatManager:
         messages = result["messages"]
         final_answer = getattr(messages[-1], "content", "") or ""
         tool_events = self._tool_events(messages, alias_map)
+        if not tool_events and alias_map:
+            fallback_event = await self._select_and_execute_tool(
+                llm,
+                message,
+                alias_map,
+                user,
+                connections,
+                access_repository,
+            )
+            if fallback_event is not None:
+                tool_events.append(fallback_event)
+                final_answer = await self._rephrase_tool_result(
+                    llm,
+                    message,
+                    fallback_event["tool"],
+                    fallback_event["result"],
+                )
         first_tool = tool_events[0] if tool_events else None
         return {
             "answer": final_answer,
@@ -166,6 +194,98 @@ class ChatManager:
                 for doc in docs
             ],
         }
+
+    async def _select_and_execute_tool(
+        self,
+        llm: Any,
+        message: str,
+        alias_map: dict[str, ToolDefinition],
+        user: User,
+        connections: dict[str, Any],
+        access_repository: AccessRepository,
+    ) -> dict[str, Any] | None:
+        """Ask the LLM to select a registered tool when native tool calls are missed."""
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        selection_response = await llm.ainvoke(
+            [
+                SystemMessage(
+                    content=(
+                        "You select connected API tools for an enterprise chatbot. "
+                        "Return only JSON with this shape: "
+                        '{"tool": "tool alias or none", "arguments": {}}. '
+                        "Choose a tool only when the user needs live service data or an action. "
+                        "Use only aliases from the available tools. If no tool is appropriate, "
+                        'return {"tool": "none", "arguments": {}}.'
+                    )
+                ),
+                HumanMessage(
+                    content=(
+                        f"User message: {message}\n\n"
+                        f"{self._tool_selection_catalog(alias_map)}"
+                    )
+                ),
+            ]
+        )
+        selection = self._parse_json_object(getattr(selection_response, "content", ""))
+        alias = str(selection.get("tool", "")).strip()
+        if not alias or alias.lower() == "none":
+            return None
+
+        tool = alias_map.get(alias)
+        if tool is None:
+            return None
+
+        arguments = selection.get("arguments")
+        if not isinstance(arguments, dict):
+            arguments = {}
+
+        try:
+            result = await self.tool_manager.execute(
+                tool.qualified_name,
+                arguments,
+                user,
+                connections,
+                access_repository,
+            )
+        except EnterpriseMCPError as exc:
+            result = {"error": str(exc)}
+
+        return {
+            "tool": tool.qualified_name,
+            "arguments": arguments,
+            "result": result,
+        }
+
+    async def _rephrase_tool_result(
+        self,
+        llm: Any,
+        user_message: str,
+        tool_name: str,
+        result: Any,
+    ) -> str:
+        """Ask the LLM to turn a connected service response into chat text."""
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        response = await llm.ainvoke(
+            [
+                SystemMessage(
+                    content=(
+                        "You are an enterprise MCP chatbot. Rephrase connected API "
+                        "results into a concise, natural answer. Do not dump raw JSON. "
+                        "If the API returned an error, explain the issue plainly."
+                    )
+                ),
+                HumanMessage(
+                    content=(
+                        f"User message: {user_message}\n"
+                        f"Tool used: {tool_name}\n"
+                        f"Tool result: {self._json(result)}"
+                    )
+                ),
+            ]
+        )
+        return getattr(response, "content", "") or self._json(result)
 
     def _tool_schemas(
         self,
@@ -221,12 +341,20 @@ class ChatManager:
         slug = re.sub(r"[^a-z0-9_-]+", "_", raw).strip("_")
         return f"tool_{index}_{slug}"[:64]
 
-    def _system_prompt(self, docs: list[Any], tool_specs: list[dict[str, Any]]) -> str:
+    def _system_prompt(
+        self,
+        docs: list[Any],
+        tool_specs: list[dict[str, Any]],
+        document_warning: str = "",
+    ) -> str:
         document_context = "\n\n".join(
             f"Source: {doc.filename}\n{doc.text}" for doc in docs
         )
+        tool_catalog = self._tool_catalog(tool_specs)
         tool_note = (
-            "Use connected MCP tools when they are needed for live service data or actions."
+            "Use connected MCP tools when they are needed for live service data or actions. "
+            "Choose the best matching tool from the available tool list and supply only arguments "
+            "that match its JSON schema."
             if tool_specs
             else "No MCP tools are currently available to you."
         )
@@ -235,10 +363,37 @@ class ChatManager:
             "When a tool result is returned, rephrase it for the user instead of dumping raw JSON. "
             "Do not claim you used a tool unless a tool call was actually made. "
             f"{tool_note}\n\n"
+            f"{tool_catalog}\n\n"
             "Use the following uploaded document excerpts only when relevant. "
             "If they are not relevant, ignore them.\n"
-            f"{document_context or 'No relevant uploaded document excerpts.'}"
+            f"{document_context or document_warning or 'No relevant uploaded document excerpts.'}"
         )
+
+    def _tool_catalog(self, tool_specs: list[dict[str, Any]]) -> str:
+        if not tool_specs:
+            return "Available tools: none."
+        lines = ["Available tools:"]
+        for spec in tool_specs:
+            function = spec.get("function", {})
+            parameters = function.get("parameters", {})
+            lines.append(
+                "- "
+                f"{function.get('name')}: {function.get('description', '')} "
+                f"Parameters: {self._json(parameters)}"
+            )
+        return "\n".join(lines)
+
+    def _tool_selection_catalog(self, alias_map: dict[str, ToolDefinition]) -> str:
+        lines = ["Available tools:"]
+        for alias, tool in alias_map.items():
+            lines.append(
+                "- "
+                f"alias: {alias}\n"
+                f"  service tool: {tool.qualified_name}\n"
+                f"  description: {tool.description or 'Invoke this connected service.'}\n"
+                f"  input schema: {self._json(self._parameters(tool.input_schema))}"
+            )
+        return "\n".join(lines)
 
     def _tool_events(
         self,
@@ -274,3 +429,21 @@ class ChatManager:
             return json.loads(value)
         except json.JSONDecodeError:
             return value
+
+    def _parse_json_object(self, value: str) -> dict[str, Any]:
+        cleaned = value.strip()
+        fenced = re.search(r"```(?:json)?\s*(.*?)```", cleaned, flags=re.DOTALL)
+        if fenced:
+            cleaned = fenced.group(1).strip()
+        try:
+            parsed = json.loads(cleaned)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+            if not match:
+                return {}
+            try:
+                parsed = json.loads(match.group(0))
+                return parsed if isinstance(parsed, dict) else {}
+            except json.JSONDecodeError:
+                return {}

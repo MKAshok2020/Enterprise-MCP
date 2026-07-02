@@ -89,8 +89,6 @@ class DocumentStore:
         if not query.strip():
             return []
 
-        query_vector = self._embed_query(query)
-        scored = []
         with self._connect() as connection:
             rows = connection.execute(
                 """
@@ -98,7 +96,11 @@ class DocumentStore:
                 FROM document_vectors
                 """
             ).fetchall()
+        if not rows:
+            return []
 
+        query_vector = self._embed_query(query)
+        scored = []
         for document_id, filename, text, embedding_json in rows:
             embedding = json.loads(embedding_json)
             score = self._cosine_similarity(query_vector, embedding)

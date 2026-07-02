@@ -224,6 +224,194 @@ Expected output includes:
 ['Local Weather REST.get_weather']
 ```
 
+## Debug The Complete App
+
+Use this flow when you need to debug the full application path: settings, database bootstrap, authentication, web or CLI presentation, MCP server connection, tool discovery, tool execution, and audit logging.
+
+### 1. Prepare The Debug Environment
+
+Use Python 3.12 or newer and activate the project virtual environment:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+Copy and edit local environment settings:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Confirm the effective configuration source before starting the app:
+
+- `app/config/appsettings.json` contains default settings.
+- `.env` can override settings with `MCP_HOST_*` variables.
+- `MCP_HOST_DATABASE_URL` must point at a reachable MySQL database.
+- `MCP_HOST_WEB_HOST` and `MCP_HOST_WEB_PORT` control the web bind address.
+- `app/config/servers.json` controls MCP/REST server definitions, tool permissions, and identity providers.
+
+### 2. Verify Database Bootstrap
+
+Create the database if it does not already exist:
+
+```sql
+CREATE DATABASE enterprise_mcp_host CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+Then run this import/bootstrap smoke test from the repository root:
+
+```powershell
+python -c "from app.presentation.web.main import create_app; app=create_app(); print(app.title)"
+```
+
+Expected output:
+
+```text
+Enterprise MCP Host
+```
+
+If startup fails with a database error, check:
+
+- MySQL is running.
+- The database exists.
+- The username and password in `MCP_HOST_DATABASE_URL` or `app/config/appsettings.json` are correct.
+- The URL uses SQLAlchemy format, for example `mysql+pymysql://root:root@localhost:3306/enterprise_mcp_host`.
+
+### 3. Debug The Web App
+
+Start the FastAPI web host:
+
+```powershell
+python run_web.py
+```
+
+Open:
+
+```text
+http://127.0.0.1:8000
+```
+
+Use a debugger by setting breakpoints in:
+
+- `run_web.py` for web startup.
+- `app/presentation/web/main.py` for FastAPI lifespan and app creation.
+- `app/presentation/web/routes.py` for request handling.
+- `app/application/host.py` for application initialization, login, server connection, discovery, and tool calls.
+- `app/persistence/repositories.py` for user, role, permission, and audit log persistence.
+
+For auto-reload while debugging route or template changes, run Uvicorn directly:
+
+```powershell
+python -m uvicorn app.presentation.web.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### 4. Debug The CLI App
+
+Run the Rich CLI host:
+
+```powershell
+python -m app.presentation.main
+```
+
+Use a debugger by setting breakpoints in:
+
+- `app/presentation/main.py` for CLI startup and login flow.
+- `app/presentation/menu.py` for menu actions.
+- `app/presentation/screens.py` for prompt/input screens.
+- `app/application/host.py` for shared application behavior used by both CLI and web.
+
+Login with `admin` / `Admin@123` for the broadest permission coverage during local debugging.
+
+### 5. Debug MCP Server Discovery And Tool Execution
+
+The default local REST tool expects a weather service at:
+
+```text
+http://localhost:8009/weather?location=London
+```
+
+Start that service before connecting `Local Weather REST` from the web or CLI host. Then use this flow:
+
+1. Login as `admin` or `operator`.
+2. Connect `Local Weather REST`.
+3. Refresh discovery.
+4. Confirm `Local Weather REST.get_weather` appears in the tool list.
+5. Execute it with:
+
+```json
+{
+  "location": "London"
+}
+```
+
+To debug the client layer directly, set breakpoints in:
+
+- `app/infrastructure/configuration.py` for loading `servers.json`.
+- `app/infrastructure/mcp_client.py` for REST and stdio MCP connection behavior.
+- `app/services/adapters/rest_adapter.py` for REST request construction and response parsing.
+- `app/application/server_manager.py` for connect/disconnect behavior.
+- `app/application/tool_manager.py` for tool discovery and execution.
+
+You can also run the direct REST-backed client smoke test from the "Run The MCP Client" section to isolate MCP/client problems from the web and CLI layers.
+
+### 6. Debug Authentication, Authorization, And Audit Logs
+
+Use these files when tracing login, permissions, and audit behavior:
+
+- `app/security/auth_service.py` for local and federated login.
+- `app/security/password_service.py` for bcrypt verification.
+- `app/security/jwt_service.py` for access and refresh token generation.
+- `app/security/authorization_service.py` for RBAC checks.
+- `app/security/session_store.py` for in-memory sessions.
+- `app/persistence/repositories.py` for user, role, permission, and audit persistence.
+
+Application logs are written to:
+
+```text
+logs/enterprise_mcp_host.log
+```
+
+Watch the log while reproducing an issue:
+
+```powershell
+Get-Content logs/enterprise_mcp_host.log -Wait
+```
+
+Audit events are also stored in the `audit_logs` MySQL table and can be viewed in the web app with an administrator account.
+
+### 7. Useful Debug Commands
+
+Compile the application modules:
+
+```powershell
+python -m compileall app
+```
+
+Confirm required runtime dependencies are importable:
+
+```powershell
+python -c "import langchain_ollama, langgraph, pypdf, docx; print('deps ok')"
+```
+
+Verify document-store search works without MySQL:
+
+```powershell
+python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from io import BytesIO; from app.config.settings import Settings; from app.application.document_store import DocumentStore; td=TemporaryDirectory(); store=DocumentStore(Settings(knowledge_base_dir=Path(td.name))); store.add_document('notes.txt', BytesIO(b'Weather service escalation policy for Mumbai support.')); print(store.search('Mumbai policy')[0].filename); td.cleanup()"
+```
+
+Use this order when narrowing down failures:
+
+1. `python -m compileall app`
+2. Dependency import check.
+3. Database bootstrap check.
+4. Web startup with `python run_web.py`.
+5. CLI startup with `python -m app.presentation.main`.
+6. MCP client smoke test.
+7. Web or CLI tool execution.
+8. Log and audit-log inspection.
+
 ## Adding Servers
 
 Edit `app/config/servers.json`:
