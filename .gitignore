@@ -20,6 +20,7 @@ Lib/
 
 # Local runtime output
 logs/
+data/
 *.log
 
 # Local environment

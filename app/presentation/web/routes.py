@@ -6,7 +6,7 @@ from time import perf_counter
 from typing import Any
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -19,6 +19,11 @@ from app.utils.validators import parse_json_object
 
 templates = Jinja2Templates(directory="app/presentation/web/templates")
 router = APIRouter()
+
+
+def is_admin(user: Any) -> bool:
+    """Return whether the user has the Administrator role."""
+    return any(role.lower() in {"admin", "administrator"} for role in user.role_names)
 
 
 def redirect(path: str) -> RedirectResponse:
@@ -197,6 +202,9 @@ async def chat(request: Request) -> HTMLResponse:
             "message": "",
             "chat": None,
             "connected_servers": host.server_manager.connected_names(),
+            "is_admin": is_admin(session.user),
+            "documents": host.document_store.list_documents(),
+            "upload_error": None,
         },
     )
 
@@ -234,6 +242,52 @@ async def chat_message(
             "message": message,
             "chat": chat_response,
             "connected_servers": host.server_manager.connected_names(),
+            "is_admin": is_admin(session.user),
+            "documents": host.document_store.list_documents(),
+            "upload_error": None,
+        },
+    )
+
+
+@router.post("/chat/documents", response_class=HTMLResponse)
+async def upload_chat_document(
+    request: Request,
+    document: UploadFile = File(...),
+) -> HTMLResponse:
+    """Allow administrators to upload documents for future chat context."""
+    host = get_host(request)
+    session = current_session(request, host)
+    if not is_admin(session.user):
+        raise HTTPException(status_code=403, detail="Only administrators can upload documents.")
+
+    upload_error = None
+    if not document.filename:
+        upload_error = "Choose a PDF, Word document, or text file to upload."
+    else:
+        try:
+            host.document_store.add_document(document.filename, document.file)
+            host.audit(
+                AuditEventType.CONFIG_CHANGE.value,
+                session.user.username,
+                True,
+                f"Uploaded chat document: {document.filename}",
+            )
+        except Exception as exc:
+            upload_error = str(exc)
+            host.audit(AuditEventType.ERROR.value, session.user.username, False, upload_error)
+
+    return templates.TemplateResponse(
+        request,
+        "chat.html",
+        {
+            "title": "LLM Chat",
+            "session": session,
+            "message": "",
+            "chat": None,
+            "connected_servers": host.server_manager.connected_names(),
+            "is_admin": True,
+            "documents": host.document_store.list_documents(),
+            "upload_error": upload_error,
         },
     )
 

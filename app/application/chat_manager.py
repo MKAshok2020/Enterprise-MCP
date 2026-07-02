@@ -1,40 +1,38 @@
-"""Tool-aware chat orchestration for the web host."""
+"""LLM chat orchestration with MCP tool use and document context."""
 
 from __future__ import annotations
 
+import json
 import re
-from typing import Any
+from typing import Annotated, Any, TypedDict
 
-from app.domain.models import User
-from app.persistence.repositories import AccessRepository
+from langgraph.graph.message import add_messages
+
+from app.application.document_store import DocumentStore
 from app.application.tool_manager import ToolManager
+from app.domain.exceptions import AuthorizationError, EnterpriseMCPError
+from app.domain.models import ToolDefinition, User
+from app.persistence.repositories import AccessRepository
+
+
+class AgentState(TypedDict):
+    """LangGraph state for a single chat turn."""
+
+    messages: Annotated[list[Any], add_messages]
 
 
 class ChatManager:
-    """Routes natural language chat messages to available MCP tools."""
+    """Runs a local Ollama LLM that can call authorized MCP tools."""
 
-    WEATHER_TERMS = {
-        "weather",
-        "climate",
-        "temperature",
-        "rain",
-        "raining",
-        "umbrella",
-        "wind",
-        "humidity",
-        "forecast",
-        "cloud",
-        "cloudy",
-        "sunny",
-    }
-
-    LOCATION_PATTERNS = (
-        re.compile(r"\b(?:in|at|for|near|around)\s+([A-Za-z][A-Za-z\s,.-]{1,60})", re.I),
-        re.compile(r"\bweather\s+([A-Za-z][A-Za-z\s,.-]{1,60})", re.I),
-    )
-
-    def __init__(self, tool_manager: ToolManager) -> None:
+    def __init__(
+        self,
+        tool_manager: ToolManager,
+        document_store: DocumentStore,
+        model_name: str,
+    ) -> None:
         self.tool_manager = tool_manager
+        self.document_store = document_store
+        self.model_name = model_name
 
     async def respond(
         self,
@@ -43,124 +41,236 @@ class ChatManager:
         connections: dict[str, Any],
         access_repository: AccessRepository,
     ) -> dict[str, Any]:
-        """Return a chat response, optionally executing an approved tool."""
-
+        """Return an LLM response, optionally executing approved MCP tools."""
         normalized = message.strip()
         if not normalized:
             return {
-                "answer": "Ask a weather or service question and I will route it through the available tools.",
+                "answer": "Ask a question and I will use connected services or uploaded documents when they help.",
                 "tool": None,
                 "arguments": None,
                 "result": None,
+                "documents": [],
             }
 
-        if self._is_weather_question(normalized):
-            return await self._answer_weather(
+        try:
+            return await self._run_agent(
                 normalized,
                 user,
                 connections,
                 access_repository,
             )
+        except ImportError as exc:
+            return {
+                "answer": (
+                    "The LLM chat dependencies are not installed yet. Run "
+                    "`pip install -r requirements.txt`, then restart the web app."
+                ),
+                "tool": None,
+                "arguments": None,
+                "result": str(exc),
+                "documents": [],
+            }
+        except Exception as exc:
+            return {
+                "answer": f"The local LLM could not complete the chat request: {exc}",
+                "tool": None,
+                "arguments": None,
+                "result": str(exc),
+                "documents": [],
+            }
 
-        return {
-            "answer": (
-                "I can currently route weather, climate, rain, wind, humidity, and umbrella "
-                "questions through the connected weather tool."
-            ),
-            "tool": None,
-            "arguments": None,
-            "result": None,
-        }
-
-    async def _answer_weather(
+    async def _run_agent(
         self,
         message: str,
         user: User,
         connections: dict[str, Any],
         access_repository: AccessRepository,
     ) -> dict[str, Any]:
-        tool_name = "Local Weather REST.get_weather"
-        if not any(tool.qualified_name == tool_name for tool in self.tool_manager.list_tools()):
-            return {
-                "answer": "Connect Local Weather REST and refresh discovery before asking weather questions.",
-                "tool": tool_name,
-                "arguments": None,
-                "result": None,
-            }
+        from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+        from langchain_ollama import ChatOllama
+        from langgraph.graph import END, StateGraph
+        docs = self.document_store.search(message)
+        tool_specs, alias_map = self._tool_schemas(user, access_repository)
+        llm = ChatOllama(model=self.model_name, temperature=0.2)
+        tool_llm = llm.bind_tools(tool_specs) if tool_specs else llm
 
-        location = self._extract_location(message)
-        if location is None:
-            return {
-                "answer": "Which location should I check?",
-                "tool": tool_name,
-                "arguments": None,
-                "result": None,
-            }
+        async def call_model(state: AgentState) -> dict[str, list[Any]]:
+            response = await tool_llm.ainvoke(state["messages"])
+            return {"messages": [response]}
 
-        arguments = {"location": location}
-        result = await self.tool_manager.execute(
-            tool_name,
-            arguments,
-            user,
-            connections,
-            access_repository,
+        async def call_tools(state: AgentState) -> dict[str, list[Any]]:
+            last_message = state["messages"][-1]
+            tool_messages = []
+            for tool_call in getattr(last_message, "tool_calls", []) or []:
+                alias = tool_call.get("name", "")
+                tool = alias_map.get(alias)
+                args = tool_call.get("args") or {}
+                if tool is None:
+                    content = json.dumps({"error": f"Unknown tool alias: {alias}"})
+                else:
+                    try:
+                        result = await self.tool_manager.execute(
+                            tool.qualified_name,
+                            args,
+                            user,
+                            connections,
+                            access_repository,
+                        )
+                        content = self._json(result)
+                    except EnterpriseMCPError as exc:
+                        content = self._json({"error": str(exc)})
+                tool_messages.append(
+                    ToolMessage(
+                        content=content,
+                        name=alias,
+                        tool_call_id=tool_call.get("id", alias),
+                    )
+                )
+            return {"messages": tool_messages}
+
+        def should_continue(state: AgentState) -> str:
+            last_message = state["messages"][-1]
+            if getattr(last_message, "tool_calls", None):
+                return "tools"
+            return END
+
+        graph = StateGraph(AgentState)
+        graph.add_node("model", call_model)
+        graph.add_node("tools", call_tools)
+        graph.set_entry_point("model")
+        graph.add_conditional_edges("model", should_continue, {"tools": "tools", END: END})
+        graph.add_edge("tools", "model")
+        app = graph.compile()
+
+        result = await app.ainvoke(
+            {
+                "messages": [
+                    SystemMessage(content=self._system_prompt(docs, tool_specs)),
+                    HumanMessage(content=message),
+                ]
+            },
+            {"recursion_limit": 8},
         )
+        messages = result["messages"]
+        final_answer = getattr(messages[-1], "content", "") or ""
+        tool_events = self._tool_events(messages, alias_map)
+        first_tool = tool_events[0] if tool_events else None
         return {
-            "answer": self._format_weather_answer(message, location, result),
-            "tool": tool_name,
-            "arguments": arguments,
-            "result": result,
+            "answer": final_answer,
+            "tool": first_tool["tool"] if first_tool else None,
+            "arguments": first_tool["arguments"] if first_tool else None,
+            "result": first_tool["result"] if first_tool else None,
+            "tools": tool_events,
+            "documents": [
+                {"filename": doc.filename, "score": doc.score, "text": doc.text}
+                for doc in docs
+            ],
         }
 
-    def _is_weather_question(self, message: str) -> bool:
-        lowered = message.lower()
-        return any(term in lowered for term in self.WEATHER_TERMS)
-
-    def _extract_location(self, message: str) -> str | None:
-        for pattern in self.LOCATION_PATTERNS:
-            match = pattern.search(message)
-            if match:
-                return self._clean_location(match.group(1))
-        return None
-
-    def _clean_location(self, value: str) -> str | None:
-        location = re.sub(
-            r"\b(?:today|tomorrow|now|please|outside|right now|this week)\b",
-            "",
-            value,
-            flags=re.I,
-        )
-        location = location.strip(" ?!.,")
-        return location or None
-
-    def _format_weather_answer(
+    def _tool_schemas(
         self,
-        message: str,
-        location: str,
-        result: Any,
-    ) -> str:
-        if not isinstance(result, dict):
-            return f"Weather for {location}: {result}"
-
-        temperature = result.get("temperature", {})
-        weather = result.get("weather", {})
-        wind = result.get("wind", {})
-        description = weather.get("description") or weather.get("condition") or "conditions unavailable"
-        current = temperature.get("current_celsius")
-        feels_like = temperature.get("feels_like_celsius")
-        wind_speed = wind.get("speed_mps")
-        umbrella_note = ""
-        if "umbrella" in message.lower() or "rain" in message.lower():
-            rainy_text = f"{weather.get('condition', '')} {description}".lower()
-            umbrella_note = (
-                " Carry an umbrella." if "rain" in rainy_text else " An umbrella does not look necessary from the current conditions."
+        user: User,
+        access_repository: AccessRepository,
+    ) -> tuple[list[dict[str, Any]], dict[str, ToolDefinition]]:
+        schemas = []
+        alias_map = {}
+        for index, tool in enumerate(self.tool_manager.list_tools(), start=1):
+            if not self._can_use_tool(user, tool, access_repository):
+                continue
+            alias = self._tool_alias(index, tool)
+            alias_map[alias] = tool
+            schemas.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": alias,
+                        "description": (
+                            f"{tool.qualified_name}: "
+                            f"{tool.description or 'Invoke this connected service.'}"
+                        ),
+                        "parameters": self._parameters(tool.input_schema),
+                    },
+                }
             )
+        return schemas, alias_map
 
-        parts = [f"{location}: {description}"]
-        if current is not None:
-            parts.append(f"{current} C")
-        if feels_like is not None:
-            parts.append(f"feels like {feels_like} C")
-        if wind_speed is not None:
-            parts.append(f"wind {wind_speed} m/s")
-        return ", ".join(parts) + "." + umbrella_note
+    def _can_use_tool(
+        self,
+        user: User,
+        tool: ToolDefinition,
+        access_repository: AccessRepository,
+    ) -> bool:
+        try:
+            self.tool_manager.authorization.require_permission(user, "tools.execute")
+            self.tool_manager.authorization.require_tool_access(user, tool, access_repository)
+            return True
+        except AuthorizationError:
+            return False
+
+    def _parameters(self, schema: dict[str, Any]) -> dict[str, Any]:
+        if schema.get("type") == "object":
+            return schema
+        return {
+            "type": "object",
+            "additionalProperties": True,
+            "properties": {},
+        }
+
+    def _tool_alias(self, index: int, tool: ToolDefinition) -> str:
+        raw = f"{tool.server_name}_{tool.name}".lower()
+        slug = re.sub(r"[^a-z0-9_-]+", "_", raw).strip("_")
+        return f"tool_{index}_{slug}"[:64]
+
+    def _system_prompt(self, docs: list[Any], tool_specs: list[dict[str, Any]]) -> str:
+        document_context = "\n\n".join(
+            f"Source: {doc.filename}\n{doc.text}" for doc in docs
+        )
+        tool_note = (
+            "Use connected MCP tools when they are needed for live service data or actions."
+            if tool_specs
+            else "No MCP tools are currently available to you."
+        )
+        return (
+            "You are an enterprise MCP chatbot. Answer naturally and concisely. "
+            "When a tool result is returned, rephrase it for the user instead of dumping raw JSON. "
+            "Do not claim you used a tool unless a tool call was actually made. "
+            f"{tool_note}\n\n"
+            "Use the following uploaded document excerpts only when relevant. "
+            "If they are not relevant, ignore them.\n"
+            f"{document_context or 'No relevant uploaded document excerpts.'}"
+        )
+
+    def _tool_events(
+        self,
+        messages: list[Any],
+        alias_map: dict[str, ToolDefinition],
+    ) -> list[dict[str, Any]]:
+        events = []
+        pending: dict[str, dict[str, Any]] = {}
+        for message in messages:
+            for tool_call in getattr(message, "tool_calls", []) or []:
+                alias = tool_call.get("name", "")
+                tool = alias_map.get(alias)
+                pending[tool_call.get("id", alias)] = {
+                    "tool": tool.qualified_name if tool else alias,
+                    "arguments": tool_call.get("args") or {},
+                    "result": None,
+                }
+            if message.__class__.__name__ == "ToolMessage":
+                event = pending.get(getattr(message, "tool_call_id", ""))
+                if event is not None:
+                    event["result"] = self._parse_json(getattr(message, "content", ""))
+                    events.append(event)
+        return events
+
+    def _json(self, value: Any) -> str:
+        try:
+            return json.dumps(value, default=str)
+        except TypeError:
+            return json.dumps(str(value))
+
+    def _parse_json(self, value: str) -> Any:
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value

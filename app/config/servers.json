@@ -91,22 +91,6 @@
       },
       "allowed_roles": ["Administrator", "Operator"],
       "timeout_seconds": 30
-    },
-    {
-      "name": "Weather Server",
-      "command": "python",
-      "args": ["-m", "weather_mcp_server"],
-      "env": {},
-      "allowed_roles": ["Administrator", "Operator"],
-      "timeout_seconds": 30
-    },
-    {
-      "name": "Finance Server",
-      "command": "python",
-      "args": ["-m", "finance_mcp_server"],
-      "env": {},
-      "allowed_roles": ["Administrator"],
-      "timeout_seconds": 30
     }
   ]
   ,

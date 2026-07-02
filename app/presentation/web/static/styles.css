@@ -227,6 +227,13 @@ pre {
   gap: 22px;
 }
 
+.chat-layout {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+}
+
 .chat-form {
   display: grid;
   gap: 14px;
@@ -265,6 +272,34 @@ pre {
   margin: 0;
 }
 
+.document-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.document-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.document-list li,
+.document-hit {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.document-list span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .sso-grid {
   display: grid;
   gap: 10px;
@@ -280,6 +315,7 @@ pre {
   }
 
   nav,
+  .chat-layout,
   .metrics {
     grid-template-columns: 1fr;
   }

@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     refresh_token_minutes: int = int(JSON_DEFAULTS.get("refresh_token_minutes", 480))
     session_timeout_minutes: int = int(JSON_DEFAULTS.get("session_timeout_minutes", 30))
     servers_config_path: Path = ROOT_DIR / "app" / "config" / "servers.json"
+    knowledge_base_dir: Path = ROOT_DIR / "data" / "knowledge_base"
+    llm_model_name: str = "llama3-groq-tool-use:latest"
+    embedding_model_name: str = "nomic-embed-text:latest"
     log_file: Path = ROOT_DIR / "logs" / "enterprise_mcp_host.log"
     mcp_tool_timeout_seconds: int = int(JSON_DEFAULTS.get("mcp_tool_timeout_seconds", 60))
     web_host: str = str(JSON_DEFAULTS.get("web_host", "127.0.0.1"))
