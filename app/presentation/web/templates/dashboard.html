@@ -42,7 +42,12 @@
           </span>
         </td>
         <td>
-          {% if not server.is_connected %}
+          {% if server.is_connected %}
+          <form method="post" action="/servers/disconnect">
+            <input type="hidden" name="server_name" value="{{ server.name }}">
+            <button type="submit">Disconnect</button>
+          </form>
+          {% else %}
           <form method="post" action="/servers/connect">
             <input type="hidden" name="server_name" value="{{ server.name }}">
             <button type="submit">Connect</button>

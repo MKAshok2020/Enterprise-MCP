@@ -4,12 +4,14 @@ from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
+from fastapi import HTTPException
 from fastapi import Request
-from fastapi.responses import HTMLResponse
+from fastapi.exception_handlers import http_exception_handler as fastapi_http_exception_handler
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.application.host import Host
 from app.domain.exceptions import EnterpriseMCPError
+from app.infrastructure.container import AppContainer
 from app.presentation.web.routes import router
 from app.presentation.web.routes import templates
 
@@ -17,7 +19,8 @@ from app.presentation.web.routes import templates
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Initialize and dispose the enterprise host."""
-    host = Host()
+    container = AppContainer()
+    host = container.host()
     host.initialize()
     app.state.host = host
     try:
@@ -47,6 +50,16 @@ def create_app() -> FastAPI:
             {"title": "Error", "session": None, "error": str(exc)},
             status_code=400,
         )
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        if 500 <= exc.status_code < 600:
+            return RedirectResponse("/login")
+        return await fastapi_http_exception_handler(request, exc)
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        return RedirectResponse("/login")
 
     return app
 

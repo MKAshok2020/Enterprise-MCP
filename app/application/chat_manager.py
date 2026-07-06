@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import re
 from typing import Annotated, Any, TypedDict
+
+logger = logging.getLogger("enterprise_mcp_host")
 
 from langgraph.graph.message import add_messages
 
@@ -29,10 +33,14 @@ class ChatManager:
         tool_manager: ToolManager,
         document_store: DocumentStore,
         model_name: str,
+        base_url: str | None = None,
     ) -> None:
         self.tool_manager = tool_manager
         self.document_store = document_store
         self.model_name = model_name
+        self.base_url = base_url
+        self._llm: Any | None = None
+        self._llm_lock = asyncio.Lock()
 
     async def respond(
         self,
@@ -42,6 +50,7 @@ class ChatManager:
         access_repository: AccessRepository,
     ) -> dict[str, Any]:
         """Return an LLM response, optionally executing approved MCP tools."""
+        logger.info("Chat request received from user %s.", user.username)
         normalized = message.strip()
         if not normalized:
             return {
@@ -71,6 +80,7 @@ class ChatManager:
                 "documents": [],
             }
         except Exception as exc:
+            logger.exception("Chat request failed for user %s.", user.username)
             return {
                 "answer": f"The local LLM could not complete the chat request: {exc}",
                 "tool": None,
@@ -87,16 +97,9 @@ class ChatManager:
         access_repository: AccessRepository,
     ) -> dict[str, Any]:
         from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-        from langchain_ollama import ChatOllama
         from langgraph.graph import END, StateGraph
-        document_warning = ""
-        try:
-            docs = self.document_store.search(message)
-        except Exception as exc:
-            docs = []
-            document_warning = f"Document context was unavailable for this turn: {exc}"
         tool_specs, alias_map = self._tool_schemas(user, access_repository)
-        llm = ChatOllama(model=self.model_name, temperature=0.2)
+        llm = await self._get_llm()
         tool_llm = llm.bind_tools(tool_specs) if tool_specs else llm
 
         async def call_model(state: AgentState) -> dict[str, list[Any]]:
@@ -112,6 +115,13 @@ class ChatManager:
                 args = tool_call.get("args") or {}
                 if tool is None:
                     content = json.dumps({"error": f"Unknown tool alias: {alias}"})
+                elif tool.server_name == "local" and tool.name == "retrieve_documents":
+                    query = str(args.get("query", "")).strip()
+                    try:
+                        result = await self._retrieve_documents(query)
+                        content = self._json(result)
+                    except Exception as exc:
+                        content = self._json({"error": str(exc)})
                 else:
                     try:
                         result = await self.tool_manager.execute(
@@ -151,11 +161,7 @@ class ChatManager:
             {
                 "messages": [
                     SystemMessage(
-                        content=self._system_prompt(
-                            docs,
-                            tool_specs,
-                            document_warning,
-                        )
+                        content=self._system_prompt(tool_specs)
                     ),
                     HumanMessage(content=message),
                 ]
@@ -183,17 +189,46 @@ class ChatManager:
                     fallback_event["result"],
                 )
         first_tool = tool_events[0] if tool_events else None
+        retrieved_documents: list[dict[str, Any]] = []
+        for event in tool_events:
+            if event.get("tool") == "local.retrieve_documents" and isinstance(event.get("result"), list):
+                retrieved_documents = event["result"]
+                break
         return {
             "answer": final_answer,
             "tool": first_tool["tool"] if first_tool else None,
             "arguments": first_tool["arguments"] if first_tool else None,
             "result": first_tool["result"] if first_tool else None,
             "tools": tool_events,
-            "documents": [
-                {"filename": doc.filename, "score": doc.score, "text": doc.text}
-                for doc in docs
-            ],
+            "documents": retrieved_documents,
         }
+
+    async def _get_llm(self) -> Any:
+        """Lazily create and cache the chat LLM instance."""
+        async with self._llm_lock:
+            if self._llm is None:
+                from langchain_ollama import ChatOllama
+
+                self._llm = ChatOllama(
+                    model=self.model_name,
+                    temperature=0.2,
+                    base_url=self.base_url,
+                )
+        return self._llm
+
+    async def _retrieve_documents(self, query: str) -> list[dict[str, Any]]:
+        if not query.strip():
+            return []
+        chunks = await asyncio.to_thread(self.document_store.search, query)
+        return [
+            {
+                "document_id": chunk.document_id,
+                "filename": chunk.filename,
+                "score": chunk.score,
+                "text": chunk.text,
+            }
+            for chunk in chunks
+        ]
 
     async def _select_and_execute_tool(
         self,
@@ -312,6 +347,34 @@ class ChatManager:
                     },
                 }
             )
+        retrieval_alias = "retrieve_documents"
+        retrieval_tool = ToolDefinition(
+            server_name="local",
+            name="retrieve_documents",
+            description="Search uploaded document excerpts for relevant evidence.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Text to search for relevant document excerpts.",
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+        )
+        alias_map[retrieval_alias] = retrieval_tool
+        schemas.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": retrieval_alias,
+                    "description": retrieval_tool.description,
+                    "parameters": retrieval_tool.input_schema,
+                },
+            }
+        )
         return schemas, alias_map
 
     def _can_use_tool(
@@ -343,13 +406,8 @@ class ChatManager:
 
     def _system_prompt(
         self,
-        docs: list[Any],
         tool_specs: list[dict[str, Any]],
-        document_warning: str = "",
     ) -> str:
-        document_context = "\n\n".join(
-            f"Source: {doc.filename}\n{doc.text}" for doc in docs
-        )
         tool_catalog = self._tool_catalog(tool_specs)
         tool_note = (
             "Use connected MCP tools when they are needed for live service data or actions. "
@@ -364,9 +422,8 @@ class ChatManager:
             "Do not claim you used a tool unless a tool call was actually made. "
             f"{tool_note}\n\n"
             f"{tool_catalog}\n\n"
-            "Use the following uploaded document excerpts only when relevant. "
-            "If they are not relevant, ignore them.\n"
-            f"{document_context or document_warning or 'No relevant uploaded document excerpts.'}"
+            "If the user question requires uploaded document evidence, call the "
+            'retrieve_documents(query={"query": "..."}) tool first rather than using document biology directly.'
         )
 
     def _tool_catalog(self, tool_specs: list[dict[str, Any]]) -> str:

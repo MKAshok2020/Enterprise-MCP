@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from time import perf_counter
 from typing import Any
 from urllib.parse import urlencode
@@ -58,7 +59,7 @@ async def login(
     """Authenticate and create a browser session cookie."""
     host = get_host(request)
     try:
-        session = host.login(username, password)
+        session = await asyncio.to_thread(host.login, username, password)
     except AuthenticationFailedError as exc:
         return templates.TemplateResponse(
             request,
@@ -117,8 +118,14 @@ async def logout(request: Request) -> RedirectResponse:
     """Logout the current browser session."""
     host = get_host(request)
     session = current_session(request, host)
-    host.auth.logout(session.session_id)
-    host.audit(AuditEventType.LOGOUT.value, session.user.username, True, "Web logout")
+    await asyncio.to_thread(host.auth.logout, session.session_id)
+    await asyncio.to_thread(
+        host.audit,
+        AuditEventType.LOGOUT.value,
+        session.user.username,
+        True,
+        "Web logout",
+    )
     response = redirect("/login")
     response.delete_cookie(host.settings.web_session_cookie_name)
     return response
@@ -157,10 +164,49 @@ async def connect_server(request: Request, server_name: str = Form(...)) -> Redi
             await host.server_manager.connect(
                 server_name, session.user, AccessRepository(db_session)
             )
-        host.audit(AuditEventType.SERVER_CONNECT.value, session.user.username, True, server_name)
+        await asyncio.to_thread(
+            host.audit,
+            AuditEventType.SERVER_CONNECT.value,
+            session.user.username,
+            True,
+            server_name,
+        )
         await host.refresh_discovery(session.user)
     except EnterpriseMCPError as exc:
-        host.audit(AuditEventType.ERROR.value, session.user.username, False, str(exc))
+        await asyncio.to_thread(
+            host.audit,
+            AuditEventType.ERROR.value,
+            session.user.username,
+            False,
+            str(exc),
+        )
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return redirect("/dashboard")
+
+
+@router.post("/servers/disconnect")
+async def disconnect_server(request: Request, server_name: str = Form(...)) -> RedirectResponse:
+    """Disconnect from an MCP server."""
+    host = get_host(request)
+    session = current_session(request, host)
+    try:
+        await host.server_manager.disconnect(server_name, session.user)
+        await asyncio.to_thread(
+            host.audit,
+            AuditEventType.SERVER_DISCONNECT.value,
+            session.user.username,
+            True,
+            server_name,
+        )
+        await host.refresh_discovery(session.user)
+    except EnterpriseMCPError as exc:
+        await asyncio.to_thread(
+            host.audit,
+            AuditEventType.ERROR.value,
+            session.user.username,
+            False,
+            str(exc),
+        )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return redirect("/dashboard")
 
@@ -193,6 +239,7 @@ async def chat(request: Request) -> HTMLResponse:
     """Render tool-aware chat page."""
     host = get_host(request)
     session = current_session(request, host)
+    documents = await asyncio.to_thread(host.document_store.list_documents)
     return templates.TemplateResponse(
         request,
         "chat.html",
@@ -203,7 +250,7 @@ async def chat(request: Request) -> HTMLResponse:
             "chat": None,
             "connected_servers": host.server_manager.connected_names(),
             "is_admin": is_admin(session.user),
-            "documents": host.document_store.list_documents(),
+            "documents": documents,
             "upload_error": None,
         },
     )
@@ -226,13 +273,20 @@ async def chat_message(
                 AccessRepository(db_session),
             )
     except EnterpriseMCPError as exc:
-        host.audit(AuditEventType.ERROR.value, session.user.username, False, str(exc))
+        await asyncio.to_thread(
+            host.audit,
+            AuditEventType.ERROR.value,
+            session.user.username,
+            False,
+            str(exc),
+        )
         chat_response = {
             "answer": str(exc),
             "tool": None,
             "arguments": None,
             "result": None,
         }
+    documents = await asyncio.to_thread(host.document_store.list_documents)
     return templates.TemplateResponse(
         request,
         "chat.html",
@@ -243,7 +297,7 @@ async def chat_message(
             "chat": chat_response,
             "connected_servers": host.server_manager.connected_names(),
             "is_admin": is_admin(session.user),
-            "documents": host.document_store.list_documents(),
+            "documents": documents,
             "upload_error": None,
         },
     )
@@ -265,8 +319,9 @@ async def upload_chat_document(
         upload_error = "Choose a PDF, Word document, or text file to upload."
     else:
         try:
-            host.document_store.add_document(document.filename, document.file)
-            host.audit(
+            await asyncio.to_thread(host.document_store.add_document, document.filename, document.file)
+            await asyncio.to_thread(
+                host.audit,
                 AuditEventType.CONFIG_CHANGE.value,
                 session.user.username,
                 True,
@@ -274,8 +329,15 @@ async def upload_chat_document(
             )
         except Exception as exc:
             upload_error = str(exc)
-            host.audit(AuditEventType.ERROR.value, session.user.username, False, upload_error)
+            await asyncio.to_thread(
+                host.audit,
+                AuditEventType.ERROR.value,
+                session.user.username,
+                False,
+                upload_error,
+            )
 
+    documents = await asyncio.to_thread(host.document_store.list_documents)
     return templates.TemplateResponse(
         request,
         "chat.html",
@@ -286,7 +348,7 @@ async def upload_chat_document(
             "chat": None,
             "connected_servers": host.server_manager.connected_names(),
             "is_admin": True,
-            "documents": host.document_store.list_documents(),
+            "documents": documents,
             "upload_error": upload_error,
         },
     )
@@ -305,7 +367,8 @@ async def execute_tool(
     arguments = parse_json_object(arguments_json)
     try:
         result = await _execute_tool(host, session.user, qualified_name, arguments)
-        host.audit_duration(
+        await asyncio.to_thread(
+            host.audit_duration,
             AuditEventType.TOOL_EXECUTE.value,
             session.user.username,
             True,
@@ -313,7 +376,13 @@ async def execute_tool(
             start,
         )
     except EnterpriseMCPError as exc:
-        host.audit(AuditEventType.ERROR.value, session.user.username, False, str(exc))
+        await asyncio.to_thread(
+            host.audit,
+            AuditEventType.ERROR.value,
+            session.user.username,
+            False,
+            str(exc),
+        )
         result = {"error": str(exc)}
     return templates.TemplateResponse(
         request,
@@ -354,10 +423,11 @@ async def audit_logs(request: Request) -> HTMLResponse:
     host = get_host(request)
     session = current_session(request, host)
     host.authorization.require_permission(session.user, PermissionCode.VIEW_LOGS.value)
+    logs = await asyncio.to_thread(host.audit_logs)
     return templates.TemplateResponse(
         request,
         "audit_logs.html",
-        {"title": "Audit Logs", "session": session, "logs": host.audit_logs()},
+        {"title": "Audit Logs", "session": session, "logs": logs},
     )
 
 

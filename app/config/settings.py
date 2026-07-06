@@ -34,6 +34,9 @@ def load_json_defaults() -> dict[str, object]:
         "web_session_cookie_name": data.get("web", {}).get("session_cookie_name"),
         "web_session_cookie_secure": data.get("web", {}).get("session_cookie_secure"),
         "audit_ip_placeholder": data.get("audit", {}).get("ip_placeholder"),
+        "document_chunk_size": data.get("document", {}).get("chunk_size"),
+        "document_chunk_overlap": data.get("document", {}).get("chunk_overlap"),
+        "ollama_base_url": data.get("ollama", {}).get("base_url"),
     }
 
 
@@ -60,7 +63,10 @@ class Settings(BaseSettings):
     knowledge_base_dir: Path = ROOT_DIR / "data" / "knowledge_base"
     llm_model_name: str = "llama3-groq-tool-use:latest"
     embedding_model_name: str = "nomic-embed-text:latest"
+    ollama_base_url: str | None = JSON_DEFAULTS.get("ollama_base_url")
     log_file: Path = ROOT_DIR / "logs" / "enterprise_mcp_host.log"
+    document_chunk_size: int = int(JSON_DEFAULTS.get("document_chunk_size", 500))
+    document_chunk_overlap: int = int(JSON_DEFAULTS.get("document_chunk_overlap", 200))
     mcp_tool_timeout_seconds: int = int(JSON_DEFAULTS.get("mcp_tool_timeout_seconds", 60))
     web_host: str = str(JSON_DEFAULTS.get("web_host", "127.0.0.1"))
     web_port: int = int(JSON_DEFAULTS.get("web_port", 8000))

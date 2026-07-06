@@ -24,34 +24,60 @@ from app.application.session_manager import SessionManager
 from app.application.chat_manager import ChatManager
 from app.application.document_store import DocumentStore
 from app.application.tool_manager import ToolManager
+from app.services.factory.service_factory import ServiceFactory
 
 
 class Host:
     """Coordinates enterprise MCP host services."""
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        database: Database | None = None,
+        passwords: PasswordService | None = None,
+        jwt: JWTService | None = None,
+        sessions: SessionStore | None = None,
+        auth: AuthenticationService | None = None,
+        sso: SSOService | None = None,
+        authorization: AuthorizationService | None = None,
+        session_manager: SessionManager | None = None,
+        loader: ConfigurationLoader | None = None,
+        service_factory: ServiceFactory | None = None,
+        server_manager: ServerManager | None = None,
+        tool_manager: ToolManager | None = None,
+        document_store: DocumentStore | None = None,
+        chat_manager: ChatManager | None = None,
+        resource_manager: ResourceManager | None = None,
+        prompt_manager: PromptManager | None = None,
+    ) -> None:
         self.settings = settings or get_settings()
         self.logger = configure_logging(self.settings)
-        self.database = Database(self.settings)
-        self.passwords = PasswordService()
-        self.jwt = JWTService(self.settings)
-        self.sessions = SessionStore(self.settings)
-        self.auth = AuthenticationService(self.passwords, self.jwt, self.sessions)
-        self.sso = SSOService()
-        self.authorization = AuthorizationService()
-        self.session_manager = SessionManager(self.sessions)
-        self.loader = ConfigurationLoader(self.settings)
+        self.database = database or Database(self.settings)
+        self.passwords = passwords or PasswordService()
+        self.jwt = jwt or JWTService(self.settings)
+        self.sessions = sessions or SessionStore(self.settings)
+        self.auth = auth or AuthenticationService(self.passwords, self.jwt, self.sessions)
+        self.sso = sso or SSOService()
+        self.authorization = authorization or AuthorizationService()
+        self.session_manager = session_manager or SessionManager(self.sessions)
+        self.loader = loader or ConfigurationLoader(self.settings)
+        self.service_factory = service_factory
         self.servers, self.tool_rules, self.identity_providers = self.loader.load()
-        self.server_manager = ServerManager(self.servers, self.authorization)
-        self.tool_manager = ToolManager(self.authorization)
-        self.document_store = DocumentStore(self.settings)
-        self.chat_manager = ChatManager(
+        self.server_manager = server_manager or ServerManager(
+            self.servers,
+            self.authorization,
+            self.service_factory,
+        )
+        self.tool_manager = tool_manager or ToolManager(self.authorization)
+        self.document_store = document_store or DocumentStore(self.settings)
+        self.chat_manager = chat_manager or ChatManager(
             self.tool_manager,
             self.document_store,
             self.settings.llm_model_name,
+            self.settings.ollama_base_url,
         )
-        self.resource_manager = ResourceManager()
-        self.prompt_manager = PromptManager()
+        self.resource_manager = resource_manager or ResourceManager()
+        self.prompt_manager = prompt_manager or PromptManager()
 
     def initialize(self) -> None:
         """Create schema and seed enterprise defaults."""

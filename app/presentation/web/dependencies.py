@@ -7,11 +7,13 @@ from fastapi import HTTPException, Request, status
 from app.application.host import Host
 from app.domain.exceptions import SessionExpiredError
 from app.domain.models import UserSession
+from app.infrastructure.container import AppContainer
 
 
 async def lifespan_host() -> AsyncIterator[Host]:
     """Create and initialize the host for the FastAPI lifespan."""
-    host = Host()
+    container = AppContainer()
+    host = container.host()
     host.initialize()
     try:
         yield host
