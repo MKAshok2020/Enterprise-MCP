@@ -75,6 +75,7 @@ class Host:
             self.document_store,
             self.settings.llm_model_name,
             self.settings.ollama_base_url,
+            self.settings,
         )
         self.resource_manager = resource_manager or ResourceManager()
         self.prompt_manager = prompt_manager or PromptManager()

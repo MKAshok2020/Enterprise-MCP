@@ -4,16 +4,18 @@ Production-oriented web and Rich CLI host for connecting to multiple Model Conte
 
 ## Architecture
 
-The project follows Clean Architecture:
+The project follows Clean Architecture with a LangGraph orchestration layer at the center of the AI workflow:
 
 - `presentation`: FastAPI web app plus Rich CLI screens, menu, and rendering.
-- `application`: host orchestration and managers for sessions, servers, tools, resources, and prompts.
+- `application`: host orchestration, session/server/tool/resource managers, and the LangGraph agent that coordinates model calls and MCP tool execution.
 - `domain`: pure models, enums, and exceptions.
 - `infrastructure`: MCP SDK client adapter, configuration loader, and logging.
 - `security`: bcrypt password hashing, JWT service, authentication, SSO helpers, authorization, and session store.
 - `persistence`: SQLAlchemy entities, repositories, and MySQL database bootstrap.
 - `config`: typed settings and MCP server configuration.
 - `utils`: reusable validation and formatting helpers.
+
+The chat path now routes through a dedicated `LangGraphAgent` node graph: model -> tool execution -> model, with tool execution and document retrieval handled in graph nodes instead of ad hoc branching logic.
 
 ## Authentication
 
@@ -394,6 +396,8 @@ Confirm required runtime dependencies are importable:
 ```powershell
 python -c "import langchain_ollama, langgraph, pypdf, docx; print('deps ok')"
 ```
+
+If you use Ollama locally, its default HTTP host is `http://127.0.0.1:11434`.
 
 Verify document-store search works without MySQL:
 

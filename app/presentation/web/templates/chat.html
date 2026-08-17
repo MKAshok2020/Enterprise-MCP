@@ -17,6 +17,42 @@
       <button type="submit">Send</button>
     </form>
 
+    {% if token_usage and (token_usage.prompt_tokens or token_usage.completion_tokens or token_usage.total_tokens) %}
+    <div class="chat-result">
+      <h2>Token Usage So Far</h2>
+      <div class="meta-grid">
+        <div>
+          <dt>Prompt</dt>
+          <dd>{{ token_usage.prompt_tokens }}</dd>
+        </div>
+        <div>
+          <dt>Completion</dt>
+          <dd>{{ token_usage.completion_tokens }}</dd>
+        </div>
+        <div>
+          <dt>Total</dt>
+          <dd>{{ token_usage.total_tokens }}</dd>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if history %}
+    <div class="chat-result">
+      <h2>Conversation History</h2>
+      <ul>
+        {% for item in history %}
+        <li>
+          <strong>{{ item.role|title }}:</strong> {{ item.content }}
+          {% if item.role == 'assistant' and (item.prompt_tokens is not none or item.completion_tokens is not none or item.total_tokens is not none) %}
+          <br><span class="muted">Tokens: prompt={{ item.prompt_tokens or 0 }}, completion={{ item.completion_tokens or 0 }}, total={{ item.total_tokens or 0 }}</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
     {% if chat %}
     <div class="chat-result">
       <h2>Assistant</h2>

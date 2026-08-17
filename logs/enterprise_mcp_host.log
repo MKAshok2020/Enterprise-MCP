@@ -1,23 +1,324 @@
-2026-07-01 02:02:05,822 INFO [enterprise_mcp_host] auth.failure Authentication failed.
-2026-07-01 02:05:37,593 INFO [enterprise_mcp_host] auth.failure Authentication failed.
-2026-07-01 02:07:45,878 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-01 03:20:08,268 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 04:37:15,181 INFO [enterprise_mcp_host] auth.failure Authentication failed.
-2026-07-02 04:38:32,933 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 04:51:51,536 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 05:06:53,960 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 06:10:28,989 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 06:20:32,848 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 07:06:07,982 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 08:06:46,866 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 08:12:39,650 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 08:43:40,018 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 08:50:05,481 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 08:56:02,072 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 09:02:33,012 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 09:30:02,821 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 10:21:28,980 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-02 11:46:52,096 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-06 13:24:55,544 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-06 13:50:18,423 INFO [enterprise_mcp_host] auth.login Login succeeded
-2026-07-06 13:59:51,555 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-06 14:38:15,544 INFO [enterprise_mcp_host] Deleting vectors for document 20260706090411980296.
+2026-07-06 14:38:15,549 ERROR [enterprise_mcp_host] Failed to add vectors for document 20260706090411980296.
+Traceback (most recent call last):
+  File "C:\Work\AI\Git\app\application\document_store.py", line 100, in add_document
+    self._add_vectors(document_id, safe_name, chunks)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Work\AI\Git\app\application\document_store.py", line 193, in _add_vectors
+    embeddings = self._embed_documents(chunks)
+  File "C:\Work\AI\Git\app\application\document_store.py", line 233, in _embed_documents
+    return self._embeddings().embed_documents(texts)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "c:\Work\AI\Git\.venv\Lib\site-packages\langchain_ollama\embeddings.py", line 325, in embed_documents
+    return self._client.embed(
+           ~~~~~~~~~~~~~~~~~~^
+        self.model,
+        ^^^^^^^^^^^
+    ...<3 lines>...
+        keep_alive=self.keep_alive,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )["embeddings"]
+    ^
+  File "c:\Work\AI\Git\.venv\Lib\site-packages\ollama\_client.py", line 415, in embed
+    return self._request(
+           ~~~~~~~~~~~~~^
+      EmbedResponse,
+      ^^^^^^^^^^^^^^
+    ...<9 lines>...
+      ).model_dump(exclude_none=True),
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "c:\Work\AI\Git\.venv\Lib\site-packages\ollama\_client.py", line 199, in _request
+    return cls(**self._request_raw(*args, **kwargs).json())
+                 ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "c:\Work\AI\Git\.venv\Lib\site-packages\ollama\_client.py", line 143, in _request_raw
+    raise ResponseError(e.response.text, e.response.status_code) from None
+ollama._types.ResponseError: Post "http://127.0.0.1:65218/tokenize": dial tcp 127.0.0.1:65218: connectex: No connection could be made because the target machine actively refused it. (status code: 400)
+2026-07-06 14:38:15,572 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-06 14:38:15,572 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-06 14:42:03,000 INFO [enterprise_mcp_host] Shutting down 1 server connections.
+2026-07-06 15:02:37,555 INFO [enterprise_mcp_host] Set current session 30127736-edf6-4d89-9bc3-42f4300a18e2.
+2026-07-06 15:02:37,567 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-06 15:02:40,721 INFO [enterprise_mcp_host] User admin connecting to server Local Weather REST.
+2026-07-06 15:02:42,138 INFO [enterprise_mcp_host] Connected to server Local Weather REST.
+2026-07-06 15:02:42,146 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-06 15:02:42,146 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-06 15:02:42,146 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-06 15:02:42,146 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-06 15:02:42,146 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-06 15:02:42,146 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-06 15:02:47,113 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-06 15:02:47,113 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-06 15:03:00,041 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-06 15:03:00,041 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-06 15:03:10,168 INFO [enterprise_mcp_host] Adding document history.pdf.
+2026-07-06 15:03:10,174 INFO [enterprise_mcp_host] Saved uploaded document to C:\Work\AI\Git\data\knowledge_base\uploads\20260706093310168812_history.pdf.
+2026-07-06 15:03:16,981 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-06 15:03:16,982 INFO [enterprise_mcp_host] Embedding 1003 chunks for document 20260706093310168812.
+2026-07-06 15:03:16,982 INFO [enterprise_mcp_host] Creating Ollama embeddings model nomic-embed-text:latest with base_url=http://127.0.0.1:11434.
+2026-07-06 15:07:27,494 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-07-06 15:09:29,824 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-06 15:09:29,824 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-06 15:09:44,402 INFO [enterprise_mcp_host] Deleting vectors for document 20260706093310168812.
+2026-07-06 15:09:44,422 ERROR [enterprise_mcp_host] Failed to add vectors for document 20260706093310168812.
+Traceback (most recent call last):
+  File "C:\Work\AI\Git\app\application\document_store.py", line 100, in add_document
+    self._add_vectors(document_id, safe_name, chunks)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Work\AI\Git\app\application\document_store.py", line 193, in _add_vectors
+    embeddings = self._embed_documents(chunks)
+  File "C:\Work\AI\Git\app\application\document_store.py", line 233, in _embed_documents
+    return self._embeddings().embed_documents(texts)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Work\AI\Git\.venv\Lib\site-packages\langchain_ollama\embeddings.py", line 325, in embed_documents
+    return self._client.embed(
+           ~~~~~~~~~~~~~~~~~~^
+        self.model,
+        ^^^^^^^^^^^
+    ...<3 lines>...
+        keep_alive=self.keep_alive,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )["embeddings"]
+    ^
+  File "C:\Work\AI\Git\.venv\Lib\site-packages\ollama\_client.py", line 415, in embed
+    return self._request(
+           ~~~~~~~~~~~~~^
+      EmbedResponse,
+      ^^^^^^^^^^^^^^
+    ...<9 lines>...
+      ).model_dump(exclude_none=True),
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Work\AI\Git\.venv\Lib\site-packages\ollama\_client.py", line 199, in _request
+    return cls(**self._request_raw(*args, **kwargs).json())
+                 ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Work\AI\Git\.venv\Lib\site-packages\ollama\_client.py", line 143, in _request_raw
+    raise ResponseError(e.response.text, e.response.status_code) from None
+ollama._types.ResponseError: Post "http://127.0.0.1:60788/tokenize": dial tcp 127.0.0.1:60788: connectex: No connection could be made because the target machine actively refused it. (status code: 400)
+2026-07-06 15:09:45,265 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-06 15:09:45,265 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-06 15:11:05,283 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-06 15:11:05,283 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 10:20:02,509 INFO [enterprise_mcp_host] Set current session dbe3ebb1-c638-4e95-b400-e05dd51ab27d.
+2026-07-07 10:20:02,520 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 10:31:02,090 INFO [enterprise_mcp_host] Refreshing tools from 0 connections.
+2026-07-07 10:31:02,090 INFO [enterprise_mcp_host] Discovered 0 tools.
+2026-07-07 10:31:02,090 INFO [enterprise_mcp_host] Refreshing resources from 0 connections.
+2026-07-07 10:31:02,091 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 10:31:02,091 INFO [enterprise_mcp_host] Refreshing prompts from 0 connections.
+2026-07-07 10:31:02,091 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 10:31:10,437 INFO [enterprise_mcp_host] User admin connecting to server Local Weather REST.
+2026-07-07 10:31:14,352 INFO [enterprise_mcp_host] Connected to server Local Weather REST.
+2026-07-07 10:31:14,374 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 10:31:14,375 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 10:31:14,376 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 10:31:14,377 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 10:31:14,377 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 10:31:14,378 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 10:31:28,450 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 10:31:28,450 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 10:31:47,192 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-07-07 10:33:40,476 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 10:33:40,476 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 10:34:57,660 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 10:34:57,660 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 10:35:12,328 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-07-07 10:35:49,401 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 10:35:49,402 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 10:39:13,413 INFO [enterprise_mcp_host] Shutting down 1 server connections.
+2026-07-07 10:41:21,253 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 10:41:34,146 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 10:41:49,929 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 10:45:23,171 INFO [enterprise_mcp_host] Set current session c1696721-91e9-4b9d-a79e-854ecca39f7e.
+2026-07-07 10:45:23,182 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 10:46:08,986 INFO [enterprise_mcp_host] User admin connecting to server Local Weather REST.
+2026-07-07 10:46:10,800 INFO [enterprise_mcp_host] Connected to server Local Weather REST.
+2026-07-07 10:46:10,807 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 10:46:10,807 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 10:46:10,807 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 10:46:10,808 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 10:46:10,808 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 10:46:10,808 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 10:46:16,916 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 10:46:16,916 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 10:46:36,078 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-07-07 10:48:31,827 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 10:48:31,828 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 10:50:05,528 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-07-07 10:50:23,026 INFO [enterprise_mcp_host] User admin executing tool Local Weather REST.get_weather with args {'location': 'Pune'}.
+2026-07-07 10:50:24,799 INFO [enterprise_mcp_host] Tool Local Weather REST.get_weather executed successfully.
+2026-07-07 10:50:24,799 INFO [enterprise_mcp_host] User admin executing tool Local Weather REST.get_weather with args {'location': 'Mumbai'}.
+2026-07-07 10:50:26,442 INFO [enterprise_mcp_host] Tool Local Weather REST.get_weather executed successfully.
+2026-07-07 10:51:35,658 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 10:51:35,658 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 10:53:09,625 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-07-07 10:54:08,541 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 10:54:08,541 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 10:56:41,718 INFO [enterprise_mcp_host] Shutting down 1 server connections.
+2026-07-07 10:57:04,626 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 10:57:12,018 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 10:57:15,396 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 10:57:49,313 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 10:58:30,756 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 10:58:36,545 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 11:01:26,542 INFO [enterprise_mcp_host] Set current session e453f880-097c-4099-a854-df8f286dbdb9.
+2026-07-07 11:01:26,547 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 11:01:28,988 INFO [enterprise_mcp_host] User admin connecting to server Local Weather REST.
+2026-07-07 11:01:30,346 INFO [enterprise_mcp_host] Connected to server Local Weather REST.
+2026-07-07 11:01:30,363 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 11:01:30,363 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 11:01:30,363 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 11:01:30,363 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 11:01:30,363 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 11:01:30,363 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 11:01:32,786 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 11:01:32,787 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 11:01:32,787 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 11:01:32,787 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 11:01:32,787 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 11:01:32,787 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 11:01:36,554 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:01:36,555 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:01:48,213 INFO [enterprise_mcp_host] Set current session ec949bd5-b3fd-4946-90ef-2163c2f8c82b.
+2026-07-07 11:01:48,218 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 11:01:49,753 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:01:49,753 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:02:07,284 INFO [enterprise_mcp_host] Set current session 5bd95da9-8c7a-4ae2-b979-ff5d23d33598.
+2026-07-07 11:02:07,289 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 11:02:11,019 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:02:11,019 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:04:57,464 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 11:10:22,134 INFO [enterprise_mcp_host] Set current session a361f7e9-3e28-4d92-942c-8c0bae68d7bd.
+2026-07-07 11:10:22,139 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 11:10:29,881 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:10:29,881 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:11:32,643 INFO [enterprise_mcp_host] Set current session b10ca0a6-427f-422c-a67a-675469f2fc90.
+2026-07-07 11:11:32,648 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 11:11:34,875 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:11:34,875 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:13:06,070 INFO [enterprise_mcp_host] Set current session 794f2adf-6666-4d78-9750-d5d25f58d817.
+2026-07-07 11:13:06,075 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 11:13:08,342 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 11:13:08,342 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 11:13:08,342 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 11:13:08,342 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 11:13:08,342 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 11:13:08,342 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 11:13:23,363 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:13:23,363 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:13:45,504 INFO [enterprise_mcp_host] Shutting down 1 server connections.
+2026-07-07 11:14:46,681 INFO [enterprise_mcp_host] Set current session c3ab0869-b193-4a61-a8c9-c90d8f25021a.
+2026-07-07 11:14:46,687 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 11:14:48,325 INFO [enterprise_mcp_host] Refreshing tools from 0 connections.
+2026-07-07 11:14:48,325 INFO [enterprise_mcp_host] Discovered 0 tools.
+2026-07-07 11:14:48,325 INFO [enterprise_mcp_host] Refreshing resources from 0 connections.
+2026-07-07 11:14:48,325 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 11:14:48,326 INFO [enterprise_mcp_host] Refreshing prompts from 0 connections.
+2026-07-07 11:14:48,326 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 11:14:51,505 INFO [enterprise_mcp_host] Refreshing tools from 0 connections.
+2026-07-07 11:14:51,506 INFO [enterprise_mcp_host] Discovered 0 tools.
+2026-07-07 11:14:51,506 INFO [enterprise_mcp_host] Refreshing resources from 0 connections.
+2026-07-07 11:14:51,506 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 11:14:51,506 INFO [enterprise_mcp_host] Refreshing prompts from 0 connections.
+2026-07-07 11:14:51,506 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 11:14:53,425 INFO [enterprise_mcp_host] User admin connecting to server Local Weather REST.
+2026-07-07 11:14:55,009 INFO [enterprise_mcp_host] Connected to server Local Weather REST.
+2026-07-07 11:14:55,016 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 11:14:55,016 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 11:14:55,016 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 11:14:55,017 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 11:14:55,017 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 11:14:55,017 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 11:14:56,996 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 11:14:56,996 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 11:14:56,996 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 11:14:56,997 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 11:14:56,997 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 11:14:56,997 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 11:18:26,267 INFO [enterprise_mcp_host] Shutting down 1 server connections.
+2026-07-07 11:26:05,011 INFO [enterprise_mcp_host] auth.failure Authentication failed.
+2026-07-07 11:26:05,021 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 11:26:24,379 INFO [enterprise_mcp_host] Ensuring document store schema exists.
+2026-07-07 11:26:24,381 INFO [enterprise_mcp_host] Document store schema validated.
+2026-07-07 11:26:24,381 INFO [enterprise_mcp_host] Initialized DocumentStore with root=C:\Work\AI\Git\data\knowledge_base, vector_db=C:\Work\AI\Git\data\knowledge_base\vectors.sqlite3, chunk_size=500, overlap=200, ollama_base_url=http://127.0.0.1:11434
+2026-07-07 11:26:24,713 INFO [enterprise_mcp_host] auth.failure Authentication failed.
+2026-07-07 11:26:24,715 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 11:27:18,044 INFO [enterprise_mcp_host] Ensuring document store schema exists.
+2026-07-07 11:27:18,045 INFO [enterprise_mcp_host] Document store schema validated.
+2026-07-07 11:27:18,045 INFO [enterprise_mcp_host] Initialized DocumentStore with root=C:\Work\AI\Git\data\knowledge_base, vector_db=C:\Work\AI\Git\data\knowledge_base\vectors.sqlite3, chunk_size=500, overlap=200, ollama_base_url=http://127.0.0.1:11434
+2026-07-07 11:27:18,365 INFO [enterprise_mcp_host] Set current session 9320c87a-e275-44f8-b270-b1cf4716052b.
+2026-07-07 11:27:18,370 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 11:27:18,372 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:27:18,372 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:27:18,387 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-07-07 11:28:30,842 INFO [enterprise_mcp_host] Set current session 6a951866-500d-4218-ad84-645c10d156cb.
+2026-07-07 11:28:30,848 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 11:28:33,109 INFO [enterprise_mcp_host] User admin connecting to server Local Weather REST.
+2026-07-07 11:28:34,523 INFO [enterprise_mcp_host] Connected to server Local Weather REST.
+2026-07-07 11:28:34,539 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 11:28:34,540 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 11:28:34,540 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 11:28:34,540 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 11:28:34,540 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 11:28:34,540 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 11:28:35,044 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 11:28:35,044 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 11:28:35,044 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 11:28:35,044 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 11:28:35,044 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 11:28:35,044 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 11:29:40,879 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:29:40,879 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:29:40,972 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:29:40,973 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:30:39,190 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-07-07 11:32:21,818 INFO [enterprise_mcp_host] User admin executing tool Local Weather REST.get_weather with args {'location': 'Pune'}.
+2026-07-07 11:32:23,555 INFO [enterprise_mcp_host] Tool Local Weather REST.get_weather executed successfully.
+2026-07-07 11:32:59,835 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 11:32:59,835 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-07-07 11:40:14,169 INFO [enterprise_mcp_host] Shutting down 1 server connections.
+2026-07-07 15:36:51,007 INFO [enterprise_mcp_host] Set current session ff630e7c-bf00-4a57-9aef-e74d68bd968a.
+2026-07-07 15:36:51,014 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-07-07 15:36:53,242 INFO [enterprise_mcp_host] User admin connecting to server Local Weather REST.
+2026-07-07 15:36:54,666 INFO [enterprise_mcp_host] Connected to server Local Weather REST.
+2026-07-07 15:36:54,682 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-07-07 15:36:54,682 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-07-07 15:36:54,682 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-07-07 15:36:54,682 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-07-07 15:36:54,682 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-07-07 15:36:54,682 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-07-07 15:36:56,741 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-07-07 15:36:56,742 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-08-18 00:22:14,516 INFO [enterprise_mcp_host] Set current session c09c0a52-77a9-4d8b-99ec-d82f90bd71a4.
+2026-08-18 00:22:14,544 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-08-18 00:22:18,779 INFO [enterprise_mcp_host] User admin connecting to server Local Weather REST.
+2026-08-18 00:22:21,666 INFO [enterprise_mcp_host] Connected to server Local Weather REST.
+2026-08-18 00:22:21,677 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-08-18 00:22:21,678 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-08-18 00:22:21,678 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-08-18 00:22:21,678 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-08-18 00:22:21,678 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-08-18 00:22:21,679 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-08-18 00:22:36,258 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-08-18 00:22:36,258 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-08-18 00:22:53,175 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-08-18 00:23:00,162 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-08-18 00:26:14,621 INFO [enterprise_mcp_host] User admin executing tool Local Weather REST.get_weather with args {'location': 'Chennai'}.
+2026-08-18 00:26:19,146 INFO [enterprise_mcp_host] Tool Local Weather REST.get_weather executed successfully.
+2026-08-18 00:26:23,763 INFO [enterprise_mcp_host] User admin executing tool Local Weather REST.get_weather with args {'location': 'Chennai'}.
+2026-08-18 00:26:36,607 INFO [enterprise_mcp_host] Tool Local Weather REST.get_weather executed successfully.
+2026-08-18 00:27:17,528 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-08-18 00:27:17,528 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-08-18 00:27:39,568 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-08-18 00:27:39,569 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-08-18 00:30:47,809 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-08-18 00:32:56,480 INFO [enterprise_mcp_host] User admin executing tool Local Weather REST.get_weather with args {'location': 'Chennai'}.
+2026-08-18 00:33:00,206 INFO [enterprise_mcp_host] Tool Local Weather REST.get_weather executed successfully.
+2026-08-18 00:33:18,258 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-08-18 00:33:18,259 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-08-18 00:36:40,714 INFO [enterprise_mcp_host] Shutting down 1 server connections.
+2026-08-18 00:36:54,410 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-08-18 00:37:03,115 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-08-18 00:37:13,663 INFO [enterprise_mcp_host] Shutting down 0 server connections.

@@ -42,7 +42,7 @@ class DocumentStore:
         self.index_path = self.root / "index.json"
         self.vector_db_path = self.root / "vectors.sqlite3"
         self.embedding_model_name = settings.embedding_model_name
-        self.ollama_base_url = settings.ollama_base_url
+        self.ollama_base_url = settings.ollama_base_url or "http://127.0.0.1:11434"
         self.chunk_size = settings.document_chunk_size
         self.overlap = settings.document_chunk_overlap
         self.upload_dir.mkdir(parents=True, exist_ok=True)
@@ -112,6 +112,10 @@ class DocumentStore:
             len(chunks),
         )
         return document
+
+    def embed_query(self, query: str) -> list[float]:
+        """Return an embedding vector for semantic search and caching."""
+        return self._embed_query(query)
 
     def search(self, query: str, limit: int = 4) -> list[DocumentChunk]:
         """Return document chunks using vector similarity search."""

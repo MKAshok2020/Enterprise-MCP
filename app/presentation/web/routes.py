@@ -13,7 +13,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.domain.enums import AuditEventType, PermissionCode
 from app.domain.exceptions import AuthenticationFailedError, EnterpriseMCPError
-from app.persistence.repositories import AccessRepository
+from app.persistence.repositories import AccessRepository, ChatMessageRepository
 from app.presentation.web.dependencies import current_session, get_host
 from app.utils.validators import parse_json_object
 
@@ -30,6 +30,17 @@ def is_admin(user: Any) -> bool:
 def redirect(path: str) -> RedirectResponse:
     """Return a 303 redirect."""
     return RedirectResponse(path, status_code=status.HTTP_303_SEE_OTHER)
+
+
+def token_summary(messages: list[Any]) -> dict[str, int]:
+    """Summarize persisted token usage for a set of chat messages."""
+    totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    for message in messages:
+        for key in totals:
+            value = getattr(message, key, None)
+            if isinstance(value, int):
+                totals[key] += value
+    return totals
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -240,6 +251,13 @@ async def chat(request: Request) -> HTMLResponse:
     host = get_host(request)
     session = current_session(request, host)
     documents = await asyncio.to_thread(host.document_store.list_documents)
+    with host.database.session() as db_session:
+        history = ChatMessageRepository(db_session).list_recent_messages(
+            session.user.id,
+            session_id=session.session_id,
+            limit=10,
+        )
+    token_usage = token_summary(history)
     return templates.TemplateResponse(
         request,
         "chat.html",
@@ -251,6 +269,8 @@ async def chat(request: Request) -> HTMLResponse:
             "connected_servers": host.server_manager.connected_names(),
             "is_admin": is_admin(session.user),
             "documents": documents,
+            "history": history,
+            "token_usage": token_usage,
             "upload_error": None,
         },
     )
@@ -264,13 +284,27 @@ async def chat_message(
     """Answer a chat message using approved MCP tools."""
     host = get_host(request)
     session = current_session(request, host)
+    history = []
     try:
         with host.database.session() as db_session:
+            chat_repository = ChatMessageRepository(db_session)
+            history = chat_repository.list_recent_messages(
+                session.user.id,
+                session_id=session.session_id,
+                limit=10,
+            )
             chat_response = await host.chat_manager.respond(
                 message,
                 session.user,
                 host.server_manager.connections,
                 AccessRepository(db_session),
+                chat_repository=chat_repository,
+                session_id=session.session_id,
+            )
+            history = chat_repository.list_recent_messages(
+                session.user.id,
+                session_id=session.session_id,
+                limit=10,
             )
     except EnterpriseMCPError as exc:
         await asyncio.to_thread(
@@ -286,6 +320,7 @@ async def chat_message(
             "arguments": None,
             "result": None,
         }
+    token_usage = token_summary(history)
     documents = await asyncio.to_thread(host.document_store.list_documents)
     return templates.TemplateResponse(
         request,
@@ -298,6 +333,8 @@ async def chat_message(
             "connected_servers": host.server_manager.connected_names(),
             "is_admin": is_admin(session.user),
             "documents": documents,
+            "history": history,
+            "token_usage": token_usage,
             "upload_error": None,
         },
     )

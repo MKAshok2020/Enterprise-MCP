@@ -37,6 +37,12 @@ def load_json_defaults() -> dict[str, object]:
         "document_chunk_size": data.get("document", {}).get("chunk_size"),
         "document_chunk_overlap": data.get("document", {}).get("chunk_overlap"),
         "ollama_base_url": data.get("ollama", {}).get("base_url"),
+        "semantic_cache_enabled": data.get("semantic_cache", {}).get("enabled"),
+        "semantic_cache_ttl_seconds": data.get("semantic_cache", {}).get("ttl_seconds"),
+        "semantic_cache_similarity_threshold": data.get(
+            "semantic_cache", {}
+        ).get("similarity_threshold"),
+        "semantic_cache_max_entries": data.get("semantic_cache", {}).get("max_entries"),
     }
 
 
@@ -63,7 +69,10 @@ class Settings(BaseSettings):
     knowledge_base_dir: Path = ROOT_DIR / "data" / "knowledge_base"
     llm_model_name: str = "llama3-groq-tool-use:latest"
     embedding_model_name: str = "nomic-embed-text:latest"
-    ollama_base_url: str | None = JSON_DEFAULTS.get("ollama_base_url")
+    ollama_base_url: str | None = JSON_DEFAULTS.get(
+        "ollama_base_url",
+        "http://127.0.0.1:11434",
+    )
     log_file: Path = ROOT_DIR / "logs" / "enterprise_mcp_host.log"
     document_chunk_size: int = int(JSON_DEFAULTS.get("document_chunk_size", 500))
     document_chunk_overlap: int = int(JSON_DEFAULTS.get("document_chunk_overlap", 200))
@@ -77,6 +86,12 @@ class Settings(BaseSettings):
         JSON_DEFAULTS.get("web_session_cookie_secure", False)
     )
     audit_ip_placeholder: str = str(JSON_DEFAULTS.get("audit_ip_placeholder", "0.0.0.0"))
+    semantic_cache_enabled: bool = bool(JSON_DEFAULTS.get("semantic_cache_enabled", True))
+    semantic_cache_ttl_seconds: int = int(JSON_DEFAULTS.get("semantic_cache_ttl_seconds", 300))
+    semantic_cache_similarity_threshold: float = float(
+        JSON_DEFAULTS.get("semantic_cache_similarity_threshold", 0.92)
+    )
+    semantic_cache_max_entries: int = int(JSON_DEFAULTS.get("semantic_cache_max_entries", 500))
 
 
 @lru_cache(maxsize=1)

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.domain.models import FederatedIdentityProfile, Permission, Role, User
 from app.persistence.entities import (
     AuditLogEntity,
+    ChatMessageEntity,
     FederatedIdentityEntity,
     IdentityProviderEntity,
     PermissionEntity,
@@ -264,6 +265,56 @@ class AuditLogRepository:
     def latest(self, limit: int = 100) -> list[AuditLogEntity]:
         """Return latest audit logs."""
         statement = select(AuditLogEntity).order_by(AuditLogEntity.id.desc()).limit(limit)
+        return list(self.session.scalars(statement))
+
+
+class ChatMessageRepository:
+    """Repository for persisted chat history."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def add_message(
+        self,
+        user_id: int,
+        username: str,
+        session_id: str | None,
+        role: str,
+        content: str,
+        prompt_tokens: int | None = None,
+        completion_tokens: int | None = None,
+        total_tokens: int | None = None,
+    ) -> ChatMessageEntity:
+        """Persist a single user/assistant message turn."""
+        entity = ChatMessageEntity(
+            user_id=user_id,
+            username=username,
+            session_id=session_id,
+            role=role,
+            content=content,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+        )
+        self.session.add(entity)
+        self.session.flush()
+        return entity
+
+    def list_recent_messages(
+        self,
+        user_id: int,
+        session_id: str | None = None,
+        limit: int = 20,
+    ) -> list[ChatMessageEntity]:
+        """Return the most recent turns for a user in chronological order."""
+        statement = (
+            select(ChatMessageEntity)
+            .where(ChatMessageEntity.user_id == user_id)
+            .order_by(ChatMessageEntity.created_at.asc(), ChatMessageEntity.id.asc())
+            .limit(limit)
+        )
+        if session_id is not None:
+            statement = statement.where(ChatMessageEntity.session_id == session_id)
         return list(self.session.scalars(statement))
 
 

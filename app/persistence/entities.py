@@ -169,6 +169,24 @@ class AuditLogEntity(Base):
     details: Mapped[str] = mapped_column(Text, default="")
 
 
+class ChatMessageEntity(Base):
+    """Persisted chat turns for later context reuse."""
+
+    __tablename__ = "chat_messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True)
+    username: Mapped[str] = mapped_column(String(100), index=True)
+    session_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    role: Mapped[str] = mapped_column(String(20), index=True)
+    content: Mapped[str] = mapped_column(Text, default="")
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
 class ServerAccessEntity(Base):
     """Server role access table."""
 
