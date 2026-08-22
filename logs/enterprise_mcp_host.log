@@ -322,3 +322,22 @@ ollama._types.ResponseError: Post "http://127.0.0.1:60788/tokenize": dial tcp 12
 2026-08-18 00:36:54,410 INFO [enterprise_mcp_host] Shutting down 0 server connections.
 2026-08-18 00:37:03,115 INFO [enterprise_mcp_host] Shutting down 0 server connections.
 2026-08-18 00:37:13,663 INFO [enterprise_mcp_host] Shutting down 0 server connections.
+2026-08-18 00:39:33,435 INFO [enterprise_mcp_host] Set current session abd61f18-ad58-4c7d-b870-9c8478c10543.
+2026-08-18 00:39:33,440 INFO [enterprise_mcp_host] auth.login Login succeeded
+2026-08-18 00:39:35,906 INFO [enterprise_mcp_host] User admin connecting to server Local Weather REST.
+2026-08-18 00:39:37,977 INFO [enterprise_mcp_host] Connected to server Local Weather REST.
+2026-08-18 00:39:37,988 INFO [enterprise_mcp_host] Refreshing tools from 1 connections.
+2026-08-18 00:39:37,988 INFO [enterprise_mcp_host] Discovered 1 tools.
+2026-08-18 00:39:37,988 INFO [enterprise_mcp_host] Refreshing resources from 1 connections.
+2026-08-18 00:39:37,988 INFO [enterprise_mcp_host] Discovered 0 resources.
+2026-08-18 00:39:37,988 INFO [enterprise_mcp_host] Refreshing prompts from 1 connections.
+2026-08-18 00:39:37,988 INFO [enterprise_mcp_host] Discovered 0 prompts.
+2026-08-18 00:39:40,276 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-08-18 00:39:40,276 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
+2026-08-18 00:40:00,781 INFO [enterprise_mcp_host] Chat request received from user admin.
+2026-08-18 00:40:00,787 INFO [enterprise_mcp_host] Generating embedding for query.
+2026-08-18 00:40:00,788 INFO [enterprise_mcp_host] Creating Ollama embeddings model nomic-embed-text:latest with base_url=http://127.0.0.1:11434.
+2026-08-18 00:42:53,101 INFO [enterprise_mcp_host] User admin executing tool Local Weather REST.get_weather with args {'location': 'Salem'}.
+2026-08-18 00:42:55,155 INFO [enterprise_mcp_host] Tool Local Weather REST.get_weather executed successfully.
+2026-08-18 00:43:46,138 INFO [enterprise_mcp_host] Loaded document index with 0 documents.
+2026-08-18 00:43:46,138 INFO [enterprise_mcp_host] Listing 0 uploaded documents.
